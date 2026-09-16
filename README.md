@@ -7,26 +7,62 @@ A minimal local video meeting app using Laravel 13 and a self-hosted LiveKit ser
 - PHP 8.3+
 - Composer
 - Docker + Docker Compose
+- PHP extensions `pdo_sqlite` and `sqlite3`
 
-Laravel 13 requires PHP 8.3 or newer. The LiveKit PHP server SDK is `agence104/livekit-server-sdk`.
+## Setup on Windows PowerShell
 
-## Setup
-
-```bash
+```powershell
 composer install
-cp .env.example .env
+Copy-Item .env.example .env
 php artisan key:generate
+New-Item -ItemType File -Path database\database.sqlite -Force
+php artisan migrate
 ```
 
-Start LiveKit:
+If `.env` already exists, make sure it contains:
 
-```bash
+```env
+DB_CONNECTION=sqlite
+SESSION_DRIVER=file
+CACHE_STORE=file
+
+LIVEKIT_URL=ws://localhost:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
+```
+
+After changing `.env`:
+
+```powershell
+php artisan config:clear
+php artisan optimize:clear
+```
+
+## Start LiveKit
+
+```powershell
 docker compose up -d
 ```
 
-Start Laravel:
+Check it:
 
-```bash
+```powershell
+docker compose ps
+docker compose logs livekit
+```
+
+The local LiveKit server uses:
+
+- WebSocket: `ws://localhost:7880`
+- WebRTC UDP: `localhost:7881`
+- API key: `devkey`
+- API secret: `secret`
+
+These credentials are for local development only. Do not expose them publicly.
+
+## Start Laravel
+
+```powershell
 php artisan serve
 ```
 
@@ -36,22 +72,16 @@ Open:
 http://localhost:8000
 ```
 
-Create a meeting, then open the generated room URL in two browser tabs or on two local devices.
+Click **Create meeting**, enter a name, and click **Join**. Open the generated room URL in a second browser tab or on another local device to test multiple participants.
+
+## Browser permissions
+
+Allow camera and microphone access when the browser asks. Use `localhost` for local development.
 
 ## Architecture
 
 - Laravel creates meeting URLs and signs short-lived LiveKit participant tokens.
 - LiveKit runs locally in Docker and handles WebRTC media routing.
-- The browser uses `livekit-client` and never receives the LiveKit API secret.
+- The browser uses `livekit-client` from jsDelivr and never receives the LiveKit API secret.
 - Rooms are created automatically when the first participant joins.
-
-## Local LiveKit
-
-The development server uses:
-
-- HTTP/WebSocket: `localhost:7880`
-- WebRTC UDP: `localhost:7881`
-- API key: `devkey`
-- API secret: `secret`
-
-These credentials are for local development only. Do not expose them publicly.
+- SQLite is available for application data, while sessions and cache use the filesystem for the local MVP.
