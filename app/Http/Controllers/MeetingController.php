@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\LiveKitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
 
