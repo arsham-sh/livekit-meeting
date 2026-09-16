@@ -1,10 +1,14 @@
 services:
   livekit:
     image: livekit/livekit-server:latest
-    command: --dev --bind 0.0.0.0
-    # LiveKit WebRTC needs direct access to the host's RTC ports.
-    # Host networking avoids Docker bridge/NAT candidates that the browser cannot reach.
-    network_mode: host
+    # Docker Desktop on Windows does not expose Linux host networking as the
+    # Windows host network. Publish the LiveKit ports instead and advertise
+    # the Windows loopback address for this local-only MVP.
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 7882
+    ports:
+      - "7880:7880/tcp"
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecr}"
 
