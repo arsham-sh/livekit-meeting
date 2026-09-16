@@ -2,10 +2,9 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     command: --dev --bind 0.0.0.0
-    ports:
-      - "7880:7880"
-      - "7881:7881/tcp"
-      - "7882:7882/udp"
+    # LiveKit WebRTC needs direct access to the host's RTC ports.
+    # Host networking avoids Docker bridge/NAT candidates that the browser cannot reach.
+    network_mode: host
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecr}"
 
