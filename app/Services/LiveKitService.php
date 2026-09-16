@@ -16,20 +16,14 @@ class LiveKitService
             ->setTtl(3600);
 
         $grant = (new VideoGrant())
-            ->setRoomName($room)
             ->setRoomJoin()
+            ->setRoomName($room)
             ->setCanPublish(true)
-            ->setCanSubscribe(true)
-            ->setCanPublishData(true);
+            ->setCanSubscribe(true);
 
-        $token = new AccessToken(
-            config('livekit.api_key'),
-            config('livekit.api_secret'),
-            $options,
-        );
-
-        $token->addGrant($grant);
-
-        return $token->getToken();
+        return (new AccessToken(config('livekit.api_key'), config('livekit.api_secret')))
+            ->init($options)
+            ->setGrant($grant)
+            ->toJwt();
     }
 }
