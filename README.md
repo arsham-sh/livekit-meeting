@@ -28,8 +28,10 @@ CACHE_STORE=file
 
 LIVEKIT_URL=ws://localhost:7880
 LIVEKIT_API_KEY=devkey
-LIVEKIT_API_SECRET=secret
+LIVEKIT_API_SECRET=devsecretdevsecretdevsecretdevsecr
 ```
+
+The LiveKit API secret must be long enough for the JWT HMAC signing key. Do not use the old `secret` value.
 
 After changing `.env`:
 
@@ -56,7 +58,7 @@ The local LiveKit server uses:
 - WebSocket: `ws://localhost:7880`
 - WebRTC UDP: `localhost:7881`
 - API key: `devkey`
-- API secret: `secret`
+- API secret: `devsecretdevsecretdevsecretdevsecr`
 
 These credentials are for local development only. Do not expose them publicly.
 
