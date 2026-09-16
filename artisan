@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
+if (file_exists($autoload = __DIR__.'/vendor/autoload.php')) {
+    require $autoload;
+} else {
+    fwrite(STDERR, "Run composer install first.\n");
+    exit(1);
+}
+
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+$status = $app->handleCommand(new ArgvInput(), new ConsoleOutput());
+exit($status);
