@@ -6,7 +6,7 @@ services:
       - "7880:7880"
       - "7881:7881/udp"
     environment:
-      LIVEKIT_KEYS: "devkey: devsecretdevsecretdevsecretdevsecr"
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecr}"
 
   redis:
     image: redis:7-alpine
