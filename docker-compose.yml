@@ -1,10 +1,9 @@
 services:
   livekit:
     image: livekit/livekit-server:latest
-    # Docker Desktop on Windows does not expose Linux host networking as the
-    # Windows host network. Publish the LiveKit ports instead and advertise
-    # the Windows loopback address for this local-only MVP.
-    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 7882
+    # Local Windows uses 127.0.0.1. Production must set LIVEKIT_NODE_IP
+    # to the server's publicly reachable IP address.
+    command: --dev --bind 0.0.0.0 --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1} --udp-port 7882
     ports:
       - "7880:7880/tcp"
       - "7881:7881/tcp"
