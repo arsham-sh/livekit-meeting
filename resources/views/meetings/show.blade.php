@@ -318,6 +318,60 @@
         }
         .speaking { outline: 2px solid #fff; outline-offset: -2px; }
         .avatar[hidden] { display: none !important; }
+        .avatar { cursor: pointer; }
+        .avatar.mood-happy { animation: moodHappy .55s cubic-bezier(.2,.9,.2,1); filter: saturate(1.35) brightness(1.08); }
+        .avatar.mood-excited { animation: moodExcited .7s ease-in-out; filter: saturate(1.5) contrast(1.05); }
+        .avatar.mood-sleepy { animation: moodSleepy .8s ease-in-out; filter: saturate(.72) brightness(.9); }
+        .avatar.mood-angry { animation: moodAngry .42s ease-in-out; filter: saturate(1.5) contrast(1.15); }
+        .mood-bubble {
+            position: absolute;
+            z-index: 8;
+            top: 12px;
+            left: 50%;
+            translate: -50% 0;
+            min-width: 30px;
+            min-height: 30px;
+            padding: 4px 7px;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            background: rgba(8,8,11,.82);
+            border: 1px solid rgba(255,255,255,.14);
+            box-shadow: 0 8px 22px rgba(0,0,0,.28);
+            font-size: 18px;
+            pointer-events: none;
+            animation: moodBubble .9s ease-out both;
+        }
+        @keyframes moodHappy {
+            0% { transform: scale(1) rotate(0); }
+            45% { transform: scale(1.16) rotate(-5deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+        @keyframes moodExcited {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            25% { transform: translateY(-8px) rotate(-7deg); }
+            50% { transform: translateY(0) rotate(7deg); }
+            75% { transform: translateY(-4px) rotate(-4deg); }
+        }
+        @keyframes moodSleepy {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(.92) translateY(4px); opacity: .72; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes moodAngry {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-5px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        @keyframes moodBubble {
+            0% { opacity: 0; transform: translateY(8px) scale(.7); }
+            25% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-14px) scale(1.05); }
+        }
+        .ping-pill { min-width: 88px; justify-content: center; }
+        .ping-pill .hud-icon { font-size: 11px; }
 
 
         .tile-tools {
@@ -728,7 +782,7 @@
 
         @media (max-width: 760px) {
             body { overflow: hidden; }
-            .top-hud { grid-column: 1 / -1; justify-self: stretch; overflow-x: auto; scrollbar-width: none; }
+            .top-hud { overflow-x: auto; scrollbar-width: none; }
             .top-hud::-webkit-scrollbar { display: none; }
             .hud-pill { flex: 0 0 auto; }
             .presentation-bar { padding-bottom: 8px; }
@@ -747,7 +801,6 @@
             .header-status { grid-column: 1 / -1; grid-row: 2; }
             .header-actions { grid-column: 2; grid-row: 1; }
             .header-actions input { width: 110px; }
-            .top-hud { display: none; }
             #status { font-size: 11px; }
             #join { min-height: 36px; }
             .status { font-size: 12px; }
@@ -791,7 +844,6 @@
             }
             .controls::-webkit-scrollbar { display: none; }
             .controls button { flex: 1 0 auto; min-width: 78px; }
-            .quality { display: none; }
 
             #document-editor {
                 width: calc(100% - 12px);
@@ -870,7 +922,7 @@
         <button id="join">Join</button>
         <div class="top-hud" aria-label="Meeting status">
             <span class="hud-pill network-pill"><span id="network-dot" class="hud-dot"></span><span id="network-label">Offline</span></span>
-            <span class="hud-pill"><span class="hud-icon">●</span><span id="participant-count-top">1</span></span>
+            <span class="hud-pill ping-pill"><span class="hud-icon">↕</span><span id="ping-label">Ping -- ms</span></span>
             <span id="share-indicator" class="hud-pill share-hud" hidden><span class="share-hud-dot"></span>Sharing</span>
         </div>
     </div>
@@ -962,8 +1014,7 @@
     <button id="document-toggle" type="button">Shared doc</button>
     <button id="copy-link" type="button">Copy link</button>
     <button id="leave">Leave</button>
-    <span id="participant-count" class="quality">1 participant</span>
-    <span id="quality" class="quality"></span>
+
 </div>
 
 <script type="module">
@@ -1019,10 +1070,8 @@ const presentationClose = document.getElementById('presentation-close');
 const presentationFullscreen = document.getElementById('presentation-fullscreen');
 const networkDot = document.getElementById('network-dot');
 const networkLabel = document.getElementById('network-label');
-const participantCountTop = document.getElementById('participant-count-top');
+const pingLabel = document.getElementById('ping-label');
 const shareIndicator = document.getElementById('share-indicator');
-const participantCount = document.getElementById('participant-count');
-const quality = document.getElementById('quality');
 const chatToggle = document.getElementById('chat-toggle');
 const chatUnread = document.getElementById('chat-unread');
 const chatPanel = document.getElementById('chat-panel');
@@ -1056,6 +1105,8 @@ let unreadMessages = 0;
 let lastJoinAttempt = 0;
 let reconnecting = false;
 let presentationTrack = null;
+let pingTimer = null;
+let screenShareRetryTimer = null;
 
 const mediaElements = new Map();
 
@@ -1464,7 +1515,38 @@ function participantTile(participant) {
             changeParticipantZoom(participant.identity, button.dataset.zoomAction);
         });
 
-        tile.append(avatar, name, badge, tools);
+        const moodBubble = document.createElement('span');
+        moodBubble.className = 'mood-bubble';
+        moodBubble.hidden = true;
+        moodBubble.setAttribute('aria-hidden', 'true');
+
+        const moods = [
+            { className: 'mood-happy', emoji: '😊' },
+            { className: 'mood-excited', emoji: '🤩' },
+            { className: 'mood-sleepy', emoji: '😴' },
+            { className: 'mood-angry', emoji: '😤' },
+        ];
+        let moodIndex = 0;
+        avatar.addEventListener('click', event => {
+            event.stopPropagation();
+            const mood = moods[moodIndex % moods.length];
+            moodIndex += 1;
+            moods.forEach(item => avatar.classList.remove(item.className));
+            void avatar.offsetWidth;
+            avatar.classList.add(mood.className);
+            moodBubble.textContent = mood.emoji;
+            moodBubble.hidden = false;
+            moodBubble.style.animation = 'none';
+            void moodBubble.offsetWidth;
+            moodBubble.style.animation = 'moodBubble .9s ease-out both';
+            window.clearTimeout(moodBubble._hideTimer);
+            moodBubble._hideTimer = window.setTimeout(() => {
+                moodBubble.hidden = true;
+            }, 900);
+            avatar.setAttribute('aria-label', displayName + ' mood: ' + mood.emoji);
+        });
+
+        tile.append(avatar, name, badge, tools, moodBubble);
         grid.appendChild(tile);
     }
 
@@ -1547,9 +1629,6 @@ function attachTileZoomGesture(tile, participant) {
 
 function updateGridDensity() {
     const count = grid.querySelectorAll('.tile').length;
-    const label = count + (count === 1 ? ' participant' : ' participants');
-    participantCount.textContent = label;
-    participantCountTop.textContent = String(count);
     grid.classList.toggle('dense', count >= 13);
     grid.classList.toggle('compact', count >= 7 && count < 13);
 }
@@ -1739,6 +1818,107 @@ function updateNetworkHud() {
     }
 }
 
+async function updatePingHud() {
+    if (!room || room.state !== ConnectionState.Connected) {
+        pingLabel.textContent = 'Ping -- ms';
+        return;
+    }
+
+    let bestRtt = null;
+    const publications = room.localParticipant?.trackPublications
+        ? [...room.localParticipant.trackPublications.values()]
+        : [];
+
+    for (const publication of publications) {
+        const track = publication?.track;
+        if (!track || typeof track.getRTCStatsReport !== 'function') continue;
+
+        try {
+            const report = await track.getRTCStatsReport();
+            if (!report) continue;
+
+            for (const stat of report.values()) {
+                if (
+                    stat?.type === 'remote-inbound-rtp' &&
+                    Number.isFinite(stat.roundTripTime) &&
+                    stat.roundTripTime >= 0
+                ) {
+                    bestRtt = bestRtt === null
+                        ? stat.roundTripTime
+                        : Math.min(bestRtt, stat.roundTripTime);
+                }
+                if (
+                    stat?.type === 'candidate-pair' &&
+                    Number.isFinite(stat.currentRoundTripTime) &&
+                    stat.currentRoundTripTime >= 0
+                ) {
+                    bestRtt = bestRtt === null
+                        ? stat.currentRoundTripTime
+                        : Math.min(bestRtt, stat.currentRoundTripTime);
+                }
+            }
+        } catch (error) {
+            console.debug('Ping stats unavailable:', error);
+        }
+    }
+
+    pingLabel.textContent = bestRtt === null
+        ? 'Ping -- ms'
+        : 'Ping ' + Math.max(0, Math.round(bestRtt * 1000)) + ' ms';
+}
+
+function startPingMonitor() {
+    if (pingTimer) clearInterval(pingTimer);
+    pingTimer = window.setInterval(updatePingHud, 1500);
+    updatePingHud();
+}
+
+function stopPingMonitor() {
+    if (pingTimer) {
+        clearInterval(pingTimer);
+        pingTimer = null;
+    }
+    pingLabel.textContent = 'Ping -- ms';
+}
+
+async function subscribeToRemoteScreenShares() {
+    if (!room || room.state !== ConnectionState.Connected) return;
+
+    for (const participant of room.remoteParticipants.values()) {
+        for (const publication of participant.videoTrackPublications?.values() || []) {
+            if (
+                publication.source === Track.Source.ScreenShare &&
+                !publication.isSubscribed &&
+                !publication.isMuted &&
+                publication.isEnabled !== false
+            ) {
+                try {
+                    await publication.setSubscribed(true);
+                } catch (error) {
+                    console.warn('Remote screen share subscribe retry failed:', {
+                        identity: participant.identity,
+                        trackSid: publication.trackSid,
+                        error,
+                    });
+                }
+            }
+        }
+    }
+}
+
+function scheduleScreenShareSubscriptionRetries() {
+    if (screenShareRetryTimer) clearTimeout(screenShareRetryTimer);
+    const delays = [0, 250, 900, 2000];
+
+    delays.forEach(delay => {
+        screenShareRetryTimer = window.setTimeout(() => {
+            subscribeToRemoteScreenShares().catch(error => {
+                console.warn('Screen share subscription pass failed:', error);
+            });
+        }, delay);
+    });
+}
+
 function updateShareButton() {
     const publication = room?.localParticipant?.getTrackPublication(Track.Source.ScreenShare);
     const sharing = !!publication && !publication.isMuted && publication.isEnabled !== false && !!publication.track;
@@ -1830,22 +2010,12 @@ function renderAllParticipants() {
 
     room.remoteParticipants.forEach(participant => {
         renderParticipant(participant);
-        participant.videoTrackPublications?.forEach(publication => {
-            if (
-                publication.source === Track.Source.ScreenShare &&
-                !publication.isSubscribed &&
-                !publication.isMuted &&
-                publication.isEnabled !== false
-            ) {
-                publication.setSubscribed(true).catch(error => {
-                    console.warn('Screen share subscribe retry failed:', error);
-                });
-            }
-        });
+
     });
 
     updateGridDensity();
     updateButtons();
+    scheduleScreenShareSubscriptionRetries();
 }
 
 function clearMedia() {
@@ -2240,6 +2410,9 @@ function setupRoomEvents() {
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
             renderParticipantVideo(participant);
+            if (publication?.source === Track.Source.ScreenShare) {
+                setStatus((participant?.name || participant?.identity || 'Participant') + ' is sharing their screen.', 'good');
+            }
         })
         .on(RoomEvent.TrackUnsubscribed, track => {
             detachTrack(track);
@@ -2253,7 +2426,6 @@ function setupRoomEvents() {
             // stuck with a published-but-unsubscribed presentation track.
             if (
                 participant !== room?.localParticipant &&
-                publication.kind === Track.Kind.Video &&
                 publication.source === Track.Source.ScreenShare &&
                 !publication.isSubscribed
             ) {
@@ -2262,6 +2434,7 @@ function setupRoomEvents() {
                 } catch (error) {
                     console.warn('Screen share subscription failed:', error);
                 }
+                scheduleScreenShareSubscriptionRetries();
             }
 
             if (publication.track) {
@@ -2277,6 +2450,7 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.ParticipantConnected, participant => {
             renderParticipant(participant);
+            scheduleScreenShareSubscriptionRetries();
             updateGridDensity();
             updateDocumentPermissionUi();
             syncNewParticipant(participant);
@@ -2346,6 +2520,7 @@ function setupRoomEvents() {
                 } catch (error) {
                     console.warn('Screen share resubscribe failed:', error);
                 }
+                scheduleScreenShareSubscriptionRetries();
             }
             if (participant) {
                 setStatus('A participant video could not be loaded. Reconnecting media...', 'error');
@@ -2354,6 +2529,9 @@ function setupRoomEvents() {
         .on(RoomEvent.ConnectionStateChanged, state => {
             updateNetworkHud();
             if (state === ConnectionState.Connected) {
+                startPingMonitor();
+                scheduleScreenShareSubscriptionRetries();
+            }
                 electDocumentHost();
                 updateDocumentPermissionUi();
                 reconnecting = false;
@@ -2363,6 +2541,11 @@ function setupRoomEvents() {
                 reconnecting = true;
                 setStatus('Connection interrupted. Reconnecting...');
             } else if (state === ConnectionState.Disconnected && !leaving) {
+                stopPingMonitor();
+                if (screenShareRetryTimer) {
+                    clearTimeout(screenShareRetryTimer);
+                    screenShareRetryTimer = null;
+                }
                 reconnecting = false;
                 setStatus('Disconnected from the meeting. Press Join to reconnect.', 'error');
                 controls.hidden = true;
@@ -2381,6 +2564,8 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.Reconnected, () => {
             reconnecting = false;
+            startPingMonitor();
+            scheduleScreenShareSubscriptionRetries();
             setStatus('Connection restored.', 'good');
             renderAllParticipants();
             updateNetworkHud();
@@ -2524,6 +2709,8 @@ async function join() {
         updateButtons();
         updateShareButton();
         updateNetworkHud();
+        startPingMonitor();
+        scheduleScreenShareSubscriptionRetries();
         renderParticipantVideo(room.localParticipant);
 
         const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
@@ -2638,6 +2825,11 @@ async function toggleScreenShare() {
                     : ScreenSharePresets.h1080fps15.resolution,
                 selfBrowserSurface: 'exclude',
                 surfaceSwitching: 'include',
+            }, {
+                source: Track.Source.ScreenShare,
+                simulcast: false,
+                videoCodec: 'vp8',
+                degradationPreference: 'maintain-resolution',
             });
         }
 
@@ -2666,6 +2858,12 @@ async function leave() {
     if (connectTimeout) {
         clearTimeout(connectTimeout);
         connectTimeout = null;
+    }
+
+    stopPingMonitor();
+    if (screenShareRetryTimer) {
+        clearTimeout(screenShareRetryTimer);
+        screenShareRetryTimer = null;
     }
 
     if (room) {
@@ -2775,6 +2973,8 @@ window.addEventListener('pagehide', () => {
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && room?.state === ConnectionState.Connected) {
         renderAllParticipants();
+        startPingMonitor();
+        scheduleScreenShareSubscriptionRetries();
     }
 });
 
