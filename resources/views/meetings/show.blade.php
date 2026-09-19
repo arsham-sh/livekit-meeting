@@ -1048,9 +1048,9 @@
         <button type="button" data-doc-command="createLink" title="Insert link">Link</button>
         <button id="document-access-toggle" type="button" hidden>Manage access</button>
         <button id="document-download" type="button">Download Word</button>
+        <span id="document-status" class="document-status">View only</span>
         <span class="toolbar-spacer"></span>
         <button id="document-close" class="toolbar-close" type="button" aria-label="Close shared document" title="Close">×</button>
-        <span id="document-status" class="document-status">View only</span>
     </div>
     <div id="document-readonly" class="document-readonly" hidden>
         You can read this document, but the host has not given you edit access.
@@ -2041,15 +2041,15 @@ function scheduleScreenShareSubscriptionRetries() {
 function updateShareButton() {
     const publication = room?.localParticipant?.getTrackPublication(Track.Source.ScreenShare);
     const sharing = !!publication && !publication.isMuted && publication.isEnabled !== false && !!publication.track;
+
     screenButton.classList.toggle('sharing', sharing);
     screenButton.textContent = sharing ? 'Stop sharing' : 'Share screen';
     shareIndicator.hidden = !sharing;
-    const publication = room?.localParticipant?.getTrackPublication(Track.Source.ScreenShare);
-    const sharing = !!publication && !publication.isMuted && publication.isEnabled !== false;
+
     screenViewButton.hidden = !sharing;
     screenViewButton.disabled = !sharing;
-    screenViewButton.textContent = sharing ? 'View share' : 'View share';
-
+    screenViewButton.textContent = 'View share';
+}
 
 function detachTrack(track) {
     if (!track) return;
