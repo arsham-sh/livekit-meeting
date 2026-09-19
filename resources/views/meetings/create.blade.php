@@ -3,229 +3,307 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#070711">
+    <meta name="theme-color" content="#e8e1d3">
     <title>LiveKit Meeting · Start a room</title>
     <style>
         :root {
-            color-scheme: dark;
-            --bg: #070711;
-            --surface: rgba(18,18,30,.72);
-            --surface-strong: rgba(25,25,42,.88);
-            --text: #f8fafc;
-            --muted: #a1a1b2;
-            --line: rgba(255,255,255,.11);
-            --violet: #8b5cf6;
-            --cyan: #22d3ee;
+            color-scheme: light;
+            --paper: #e8e1d3;
+            --paper-2: #ded6c7;
+            --ink: #171714;
+            --muted: #6e695f;
+            --line: #bdb5a6;
+            --accent: #b64d35;
+            --white: #f4efe5;
         }
+
         * { box-sizing: border-box; }
-        html, body { min-height: 100%; margin: 0; }
+
+        html, body {
+            min-height: 100%;
+            margin: 0;
+        }
+
         body {
             min-height: 100dvh;
+            padding: 24px;
             display: grid;
             place-items: center;
-            overflow: hidden;
-            padding: 24px;
-            color: var(--text);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--ink);
             background:
-                radial-gradient(circle at 15% 15%, rgba(139,92,246,.23), transparent 28%),
-                radial-gradient(circle at 86% 82%, rgba(34,211,238,.16), transparent 26%),
-                radial-gradient(circle at 50% 0%, rgba(99,102,241,.10), transparent 34%),
-                var(--bg);
+                linear-gradient(rgba(23,23,20,.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(23,23,20,.025) 1px, transparent 1px),
+                var(--paper);
+            background-size: 32px 32px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
+
         body::before {
-            content: "";
+            content: "LIVEKIT / REALTIME MEETING";
             position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: .45;
-            background:
-                linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-            background-size: 36px 36px;
-            mask-image: radial-gradient(circle at center, #000, transparent 82%);
+            top: 18px;
+            left: 24px;
+            color: #81796d;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: .16em;
         }
+
         .shell {
-            position: relative;
-            width: min(1040px, 100%);
+            width: min(1120px, 100%);
             display: grid;
-            grid-template-columns: 1.15fr .85fr;
-            gap: 18px;
-            padding: 18px;
-            border: 1px solid var(--line);
-            border-radius: 30px;
-            background: rgba(8,8,15,.58);
-            box-shadow: 0 40px 120px rgba(0,0,0,.48);
-            backdrop-filter: blur(24px) saturate(130%);
+            grid-template-columns: minmax(0, 1.5fr) minmax(300px, .65fr);
+            border-top: 1px solid var(--ink);
+            border-bottom: 1px solid var(--ink);
         }
-        .hero, .start-card {
-            position: relative;
-            overflow: hidden;
-            border: 1px solid var(--line);
-            border-radius: 22px;
+
+        .hero,
+        .start-card {
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
         }
+
         .hero {
-            min-height: 540px;
+            min-height: 610px;
+            padding: clamp(34px, 7vw, 86px) clamp(26px, 6vw, 78px) 34px 0;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: clamp(28px, 5vw, 58px);
-            background:
-                linear-gradient(145deg, rgba(255,255,255,.055), transparent 42%),
-                radial-gradient(circle at 90% 10%, rgba(34,211,238,.10), transparent 25%),
-                var(--surface);
+            border-right: 1px solid var(--line);
         }
+
         .hero::after {
-            content: "";
-            position: absolute;
-            width: 260px;
-            height: 260px;
-            right: -100px;
-            bottom: -110px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(139,92,246,.45), rgba(34,211,238,.06));
-            filter: blur(10px);
+            display: none;
         }
+
         .eyebrow {
             display: inline-flex;
-            align-items: center;
-            gap: 8px;
             width: fit-content;
-            padding: 7px 10px;
-            border: 1px solid rgba(255,255,255,.10);
-            border-radius: 999px;
-            background: rgba(255,255,255,.045);
-            color: #c4b5fd;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: var(--accent);
             font-size: 10px;
             font-weight: 900;
-            letter-spacing: .14em;
+            letter-spacing: .18em;
             text-transform: uppercase;
         }
+
         .eyebrow::before {
-            content: "";
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #4ade80;
-            box-shadow: 0 0 14px rgba(74,222,128,.8);
+            content: "01";
+            width: auto;
+            height: auto;
+            margin-right: 10px;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            color: #81796d;
         }
+
         h1 {
-            max-width: 620px;
-            margin: 22px 0 14px;
-            font-size: clamp(42px, 7vw, 76px);
-            line-height: .94;
-            letter-spacing: -.055em;
+            max-width: 760px;
+            margin: 24px 0 18px;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(58px, 9vw, 112px);
+            font-weight: 400;
+            line-height: .88;
+            letter-spacing: -.065em;
         }
+
         h1 span {
-            background: linear-gradient(110deg, #fff 15%, #c4b5fd 55%, #67e8f9 90%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--accent);
+            background: none;
+            -webkit-background-clip: initial;
+            background-clip: initial;
         }
+
         .hero-copy {
-            max-width: 580px;
+            max-width: 600px;
             margin: 0;
             color: var(--muted);
-            font-size: clamp(15px, 1.8vw, 18px);
-            line-height: 1.7;
+            font-size: 15px;
+            line-height: 1.65;
         }
+
         .feature-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 9px;
-            margin-top: 34px;
+            gap: 0;
+            margin-top: 52px;
+            border-top: 1px solid var(--line);
         }
+
         .feature {
-            padding: 12px;
-            border: 1px solid rgba(255,255,255,.08);
-            border-radius: 14px;
-            background: rgba(255,255,255,.035);
+            min-height: 104px;
+            padding: 16px 14px 10px 0;
+            border-radius: 0;
+            border: 0;
+            border-right: 1px solid var(--line);
+            background: transparent;
         }
-        .feature strong, .feature span { display: block; }
-        .feature strong { font-size: 12px; }
-        .feature span { margin-top: 4px; color: #85859a; font-size: 10px; line-height: 1.4; }
+
+        .feature:not(:first-child) {
+            padding-left: 14px;
+        }
+
+        .feature:last-child {
+            border-right: 0;
+        }
+
+        .feature strong,
+        .feature span {
+            display: block;
+        }
+
+        .feature strong {
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 17px;
+            font-weight: 400;
+        }
+
+        .feature span {
+            margin-top: 7px;
+            color: #81796d;
+            font-size: 10px;
+            line-height: 1.45;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+        }
+
         .start-card {
+            min-height: 610px;
+            padding: 34px 0 34px clamp(24px, 4vw, 46px);
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: clamp(24px, 4vw, 42px);
-            background:
-                linear-gradient(145deg, rgba(139,92,246,.11), transparent 45%),
-                var(--surface-strong);
-            box-shadow: inset 0 1px rgba(255,255,255,.05);
         }
+
         .start-card .icon {
-            width: 52px;
-            height: 52px;
-            display: grid;
-            place-items: center;
-            border-radius: 16px;
-            margin-bottom: 24px;
-            background: linear-gradient(135deg, var(--violet), var(--cyan));
-            color: #fff;
-            font-size: 22px;
-            font-weight: 900;
-            box-shadow: 0 14px 34px rgba(99,102,241,.28);
+            width: auto;
+            height: auto;
+            margin-bottom: 38px;
+            display: block;
+            border-radius: 0;
+            background: none;
+            color: var(--accent);
+            font: 400 40px Georgia, "Times New Roman", serif;
+            box-shadow: none;
         }
+
         .start-card h2 {
             margin: 0 0 9px;
-            font-size: 25px;
-            letter-spacing: -.035em;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 34px;
+            font-weight: 400;
+            letter-spacing: -.04em;
         }
+
         .start-card p {
-            margin: 0 0 24px;
+            margin: 0 0 28px;
             color: var(--muted);
             line-height: 1.6;
             font-size: 13px;
         }
+
         form { margin: 0; }
+
         button {
             width: 100%;
             min-height: 52px;
-            border: 1px solid rgba(255,255,255,.16);
-            border-radius: 14px;
+            padding: 0 18px;
+            border: 1px solid var(--ink);
+            border-radius: 2px;
             cursor: pointer;
-            color: #fff;
-            background: linear-gradient(135deg, #7c3aed, #0891b2);
-            font: 800 14px inherit;
-            letter-spacing: -.01em;
-            box-shadow: 0 16px 34px rgba(79,70,229,.25), inset 0 1px rgba(255,255,255,.22);
-            transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+            color: var(--white);
+            background: var(--ink);
+            font: 700 12px "Helvetica Neue", Helvetica, Arial, sans-serif;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            box-shadow: none;
+            transition: background .15s ease, color .15s ease;
         }
+
         button:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.08);
-            box-shadow: 0 20px 40px rgba(79,70,229,.32), inset 0 1px rgba(255,255,255,.25);
+            transform: none;
+            filter: none;
+            color: var(--ink);
+            background: transparent;
+            box-shadow: none;
         }
-        button:active { transform: translateY(0); }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
         .hint {
-            margin-top: 14px;
-            color: #6f7081;
-            font-size: 10px;
+            margin-top: 13px;
+            color: #8a8378;
+            font-size: 9px;
             line-height: 1.5;
-            text-align: center;
+            text-align: left;
         }
+
         @media (max-width: 820px) {
-            body { overflow: auto; place-items: start center; }
-            .shell { grid-template-columns: 1fr; margin: auto 0; }
-            .hero { min-height: 0; }
+            body {
+                padding: 54px 18px 24px;
+                display: block;
+            }
+
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                min-height: auto;
+                padding: 42px 0 30px;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .start-card {
+                min-height: auto;
+                padding: 34px 0 38px;
+            }
         }
+
         @media (max-width: 520px) {
-            body { padding: 10px; }
-            .shell { padding: 8px; border-radius: 22px; }
-            .hero, .start-card { border-radius: 17px; }
-            .hero { padding: 28px 22px; }
-            h1 { font-size: 50px; }
-            .feature-row { grid-template-columns: 1fr; }
-            .feature { display: flex; align-items: center; gap: 8px; }
-            .feature span { margin: 0; }
+            body {
+                padding: 48px 14px 18px;
+            }
+
+            h1 {
+                font-size: 58px;
+            }
+
+            .feature-row {
+                grid-template-columns: 1fr;
+            }
+
+            .feature,
+            .feature:not(:first-child) {
+                min-height: auto;
+                padding: 13px 0;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .feature:last-child {
+                border-bottom: 0;
+            }
+
+            .feature span {
+                margin-top: 3px;
+            }
         }
-        @media (prefers-reduced-transparency: reduce) {
-            .shell, .hero, .start-card { backdrop-filter: none; }
-        }
+
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { transition-duration: .01ms !important; }
+            *, *::before, *::after {
+                transition-duration: .01ms !important;
+            }
         }
     </style>
 </head>
@@ -234,11 +312,11 @@
         <section class="hero">
             <div>
                 <span class="eyebrow">Private realtime rooms</span>
-                <h1>Meet without the <span>mess.</span></h1>
+                <h1>Meet without the <span>noise.</span></h1>
                 <p class="hero-copy">
-                    Start a focused video room with screen sharing, collaborative notes,
-                    whiteboarding, and chat. One click, one link, fewer tiny buttons
-                    pretending to be a product.
+                    Video, screen sharing, collaborative notes, whiteboarding, and chat,
+                    reduced to the essentials. No dashboard maze. No decorative glass.
+                    Humanity has suffered enough translucent panels.
                 </p>
             </div>
 
