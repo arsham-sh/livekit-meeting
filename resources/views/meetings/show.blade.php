@@ -593,6 +593,14 @@ const whiteboardZoomLabel = document.getElementById('whiteboard-zoom-label');
 const whiteboardReset = document.getElementById('whiteboard-reset');
 const whiteboardClear = document.getElementById('whiteboard-clear');
 const whiteboardClose = document.getElementById('whiteboard-close');
+let whiteboardOpen = false;
+let whiteboardDrawing = null;
+let whiteboardStrokes = [];
+let whiteboardMode = 'pen';
+let whiteboardZoom = 1;
+let whiteboardOffsetX = 0;
+let whiteboardOffsetY = 0;
+const zoomLevels = new Map();
 const copyLinkButton = document.getElementById('copy-link');
 const fullscreenButton = document.getElementById('fullscreen');
 const participantCount = document.getElementById('participant-count');
@@ -1501,7 +1509,6 @@ async function join() {
         const failedRoom = room;
         room = null;
         clearMedia();
-        openWhiteboard(false);
         openWhiteboard(false);
 
         if (failedRoom) {
