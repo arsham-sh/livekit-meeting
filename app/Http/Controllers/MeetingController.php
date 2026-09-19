@@ -38,6 +38,12 @@ class MeetingController extends Controller
             'name' => ['required', 'string', 'min:1', 'max:80'],
         ]);
 
+        $livekitUrl = config('livekit.url');
+
+        if (!is_string($livekitUrl) || $livekitUrl === '') {
+            abort(503, 'Realtime service is not configured.');
+        }
+
         $identity = (string) Str::uuid();
 
         return response()->json([
