@@ -2537,7 +2537,6 @@ function setupRoomEvents() {
             if (state === ConnectionState.Connected) {
                 startPingMonitor();
                 scheduleScreenShareSubscriptionRetries();
-            }
                 electDocumentHost();
                 updateDocumentPermissionUi();
                 reconnecting = false;
