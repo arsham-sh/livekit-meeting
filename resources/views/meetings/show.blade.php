@@ -181,7 +181,7 @@
 
         #grid {
             position: fixed;
-            inset: 91px 0 0;
+            inset: 71px 0 0;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(min(300px, 32vw), 1fr));
             grid-auto-rows: minmax(170px, 1fr);
@@ -863,7 +863,7 @@
     <div class="room"><span class="room-kicker">LIVE ROOM</span><span class="room-name">{{ $room }}</span></div>
     <div class="header-status">
         <span id="status-dot" class="status-dot"></span>
-        <span id="status">Enter your name and join the room.</span>
+        <span id="status" class="status">Enter your name and join the room.</span>
     </div>
     <div class="header-actions">
         <input id="name" placeholder="Your name" maxlength="80" autocomplete="name">
