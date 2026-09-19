@@ -150,14 +150,30 @@
         }
         .tile.screen-share video { object-fit: contain; }
         .avatar {
-            width: 82px;
-            height: 82px;
-            border-radius: 22px;
+            width: 96px;
+            height: 96px;
+            border-radius: 28px;
             display: block;
             object-fit: cover;
             background: #29292f;
-            box-shadow: 0 10px 30px rgba(0,0,0,.22);
+            box-shadow: 0 14px 36px rgba(0,0,0,.30);
             user-select: none;
+            transition: transform .2s ease, opacity .2s ease;
+        }
+        .tile.no-video {
+            background:
+                radial-gradient(circle at 50% 38%, rgba(255,255,255,.06), transparent 34%),
+                linear-gradient(145deg, #19191f, #101014);
+        }
+        .tile.no-video .avatar {
+            transform: scale(1.02);
+        }
+        .tile.no-video::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 42%, rgba(255,255,255,.05), transparent 38%);
         }
         .name {
             position: absolute;
@@ -558,11 +574,13 @@
                 width: 100%;
                 min-height: 0;
                 aspect-ratio: 16 / 10;
-                border-radius: 10px;
+                border-radius: 12px;
             }
-            .avatar { width: 48px; height: 48px; font-size: 19px; }
-            .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 4px 6px; font-size: 11px; }
-            .badge { right: 6px; top: 6px; padding: 4px 6px; font-size: 10px; }
+            .avatar { width: 64px; height: 64px; border-radius: 20px; }
+            .name { left: 7px; bottom: 7px; max-width: calc(100% - 14px); padding: 5px 7px; font-size: 11px; }
+            .badge { right: 7px; top: 7px; padding: 5px 7px; font-size: 10px; }
+            .controls { gap: 6px; padding: 7px; border-radius: 14px; }
+            .controls button { min-height: 44px; }
             .tile-tools { opacity: 1; top: 6px; left: 6px; }
             .tile-tools button { min-width: 28px; width: 28px; min-height: 28px; font-size: 12px; }
             .tile-zoom-label { display: none; }
@@ -607,15 +625,41 @@
             }
         }
 
-        @media (max-width: 420px) {
-            #grid {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 600px) {
+            #grid,
             #grid.compact,
             #grid.dense {
                 grid-template-columns: 1fr;
+                gap: 9px;
+                padding: 8px 8px 112px;
             }
-            .tile { aspect-ratio: 16 / 9; }
+            .tile { aspect-ratio: 16 / 9; min-height: 210px; }
+            .avatar { width: 82px; height: 82px; border-radius: 24px; }
+            .name { font-size: 12px; }
+            .tile-tools { top: 8px; left: 8px; }
+            .tile-tools button { min-width: 32px; width: 32px; min-height: 32px; }
+            .controls {
+                left: 8px;
+                right: 8px;
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                overflow: visible;
+            }
+            .controls button {
+                min-width: 0;
+                width: 100%;
+                padding: 8px 6px;
+                font-size: 12px;
+            }
+            .quality { display: none; }
+        }
+
+        @media (max-width: 420px) {
+            .tile { min-height: 190px; }
+            .avatar { width: 72px; height: 72px; }
+            .controls {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
@@ -1211,7 +1255,7 @@ function participantTile(participant) {
         avatar.onerror = () => {
             avatar.onerror = null;
             avatar.removeAttribute('src');
-            avatar.alt = initials(displayName);
+            avatar.alt = displayName;
             avatar.style.background = '#29292f';
         };
     }
@@ -1300,10 +1344,10 @@ function updateBadge(participant) {
 
 function currentVideoPublication(participant) {
     const screen = participant.getTrackPublication(Track.Source.ScreenShare);
-    if (screen?.track) return screen;
+    if (screen?.track && screen.isMuted !== true && screen.isEnabled !== false) return screen;
 
     const camera = participant.getTrackPublication(Track.Source.Camera);
-    if (camera?.track) return camera;
+    if (camera?.track && camera.isMuted !== true && camera.isEnabled !== false) return camera;
 
     return null;
 }
@@ -1321,6 +1365,7 @@ function removeVideoForParticipant(participant) {
     }
 
     tile.classList.remove('screen-share');
+    tile.classList.add('no-video');
 }
 
 function renderParticipantVideo(participant) {
@@ -1329,6 +1374,7 @@ function renderParticipantVideo(participant) {
 
     if (!publication?.track) {
         removeVideoForParticipant(participant);
+        tile.classList.add('no-video');
         updateGridDensity();
         return;
     }
@@ -1342,6 +1388,7 @@ function renderParticipantVideo(participant) {
 
     if (existing?.dataset.trackSid === sid) {
         tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
+        tile.classList.remove('no-video');
         tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
         applyParticipantZoom(participant);
         return;
@@ -1363,6 +1410,7 @@ function renderParticipantVideo(participant) {
 
     tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
     tile.insertBefore(element, tile.querySelector('.avatar'));
+    tile.classList.remove('no-video');
     tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
     mediaElements.set(sid, element);
     applyParticipantZoom(participant);
