@@ -1760,6 +1760,7 @@ function renderAllParticipants() {
 }
 
 function clearMedia() {
+    closePresentation();
     mediaElements.clear();
     grid.replaceChildren();
     audioRoot.replaceChildren();
@@ -1794,7 +1795,9 @@ function updateButtons() {
 
     micButton.textContent = micOn ? 'Mute' : 'Unmute';
     cameraButton.textContent = cameraOn ? 'Camera off' : 'Camera on';
+    screenButton.classList.toggle('sharing', screenOn);
     screenButton.textContent = screenOn ? 'Stop sharing' : 'Share screen';
+    shareIndicator.hidden = !screenOn;
 
     updateBadge(room.localParticipant);
 }
@@ -2518,6 +2521,7 @@ async function toggleScreenShare() {
 
         renderParticipantVideo(room.localParticipant);
         updateButtons();
+        updateShareButton();
     } catch (error) {
         console.error('Screen share toggle failed:', error);
 
