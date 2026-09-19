@@ -1142,7 +1142,7 @@ function downloadSharedDocument() {
     anchor.href = url;
     anchor.download = 'meeting-document.doc';
     anchor.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function initials(name) {
@@ -1537,26 +1537,6 @@ function drawStroke(stroke) {
 }
 
 
-function drawStroke(stroke) {
-    const ctx = whiteboardCanvas.getContext('2d');
-    if (!stroke?.points?.length) return;
-    ctx.save();
-    ctx.translate(whiteboardOffsetX, whiteboardOffsetY);
-    ctx.scale(whiteboardZoom, whiteboardZoom);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = Number(stroke.size) || 4;
-    ctx.strokeStyle = stroke.mode === 'eraser' ? '#ffffff' : (stroke.color || '#111111');
-    ctx.beginPath();
-    stroke.points.forEach((point, index) => {
-        if (index === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
-    });
-    if (stroke.points.length === 1) ctx.lineTo(stroke.points[0].x + .01, stroke.points[0].y);
-    ctx.stroke();
-    ctx.restore();
-}
-
 function drawStrokeSegment(stroke, from, to) {
     const ctx = whiteboardCanvas.getContext('2d');
     ctx.save();
@@ -1792,8 +1772,9 @@ function documentStrokesForSync() {
 }
 
 function setupRoomEvents() {
+    room.registerTextStreamHandler('shared-document', handleDocumentStream);
+
     room
-        .registerTextStreamHandler('shared-document', handleDocumentStream)
         .on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             handleChatData(payload, participant, topic);
             handleWhiteboardData(payload, participant, topic);
@@ -2040,15 +2021,6 @@ async function join() {
         if (connectionError) {
             console.info('TURN fallback succeeded after direct connection failure.');
         }
-
-        connectTimeout = setTimeout(() => {
-            if (room && room.state !== ConnectionState.Connected) {
-                room.disconnect().catch(() => {});
-            }
-        }, 20000);
-
-        clearTimeout(connectTimeout);
-        connectTimeout = null;
 
         nameInput.disabled = true;
         joinButton.hidden = true;
