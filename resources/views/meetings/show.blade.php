@@ -270,10 +270,11 @@
             height: 96px;
             border-radius: 28px;
             display: block;
-            object-fit: cover;
-            background: #29292f;
-            box-shadow: 0 14px 36px rgba(0,0,0,.30);
+            object-fit: contain;
+            background: transparent;
+            box-shadow: none;
             user-select: none;
+            cursor: pointer;
             transition: transform .2s ease, opacity .2s ease;
         }
         .tile.no-video {
@@ -1423,6 +1424,8 @@ function initials(name) {
 const blobatarExpressions = [
     'idle',
     'happy',
+    'sad',
+    'mad',
     'surprised',
     'wink',
     'sleepy',
@@ -1440,7 +1443,7 @@ function blobatarUrl(name, size = 96, expression = 'idle') {
     const pose = blobatarExpressions.includes(expression) ? expression : 'idle';
     return 'https://blobatar.dev/avatar/' + encodeURIComponent(value) +
         '?size=' + encodeURIComponent(size) +
-        '&background=circle' +
+        '&background=none' +
         '&expression=' + encodeURIComponent(pose);
 }
 
@@ -1456,14 +1459,7 @@ function cycleBlobatarExpression(participant) {
 
     avatar.dataset.expression = next;
     avatar.src = blobatarUrl(displayName, 96, next);
-    avatar.setAttribute('aria-label', displayName + ' mood: ' + next);
-
-    const moodButton = tile.querySelector('[data-mood-action]');
-    if (moodButton) {
-        moodButton.textContent = next === 'idle' ? '😊' : '🙂';
-        moodButton.title = 'Change mood (' + next + ')';
-        moodButton.setAttribute('aria-label', 'Change Blobatar mood, currently ' + next);
-    }
+    avatar.setAttribute('aria-label', displayName + ' expression: ' + next);
 }
 
 function participantTile(participant) {
@@ -1492,19 +1488,11 @@ function participantTile(participant) {
 
         const tools = document.createElement('div');
         tools.className = 'tile-tools';
-        tools.innerHTML = '<button type="button" data-mood-action="next" aria-label="Change Blobatar mood" title="Change mood">😊</button>' +
-            '<button type="button" data-zoom-action="out" aria-label="Zoom out">−</button>' +
+        tools.innerHTML = '<button type="button" data-zoom-action="out" aria-label="Zoom out">−</button>' +
             '<span class="tile-zoom-label">100%</span>' +
             '<button type="button" data-zoom-action="in" aria-label="Zoom in">+</button>' +
             '<button type="button" data-zoom-action="reset" aria-label="Reset zoom">Reset</button>';
         tools.addEventListener('click', event => {
-            const moodButton = event.target.closest('[data-mood-action]');
-            if (moodButton) {
-                event.stopPropagation();
-                cycleBlobatarExpression(participant);
-                return;
-            }
-
             const button = event.target.closest('[data-zoom-action]');
             if (!button) return;
             event.stopPropagation();
@@ -1531,7 +1519,7 @@ function participantTile(participant) {
             avatar.onerror = null;
             avatar.removeAttribute('src');
             avatar.alt = displayName;
-            avatar.style.background = '#29292f';
+            avatar.style.background = 'transparent';
         };
     }
     attachTileZoomGesture(tile, participant);
