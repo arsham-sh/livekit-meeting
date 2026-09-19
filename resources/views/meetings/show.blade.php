@@ -338,6 +338,16 @@ function detachTrack(track) {
     if (track.sid) {
         mediaElements.delete(track.sid);
     }
+
+    const source = track.source;
+    const participant = track.participant;
+    if (source === Track.Source.ScreenShare && participant) {
+        const key = `${participant.identity}:${Track.Source.ScreenShare}`;
+        const tile = grid.querySelector(`[data-tile-key="${CSS.escape(key)}"]`);
+        if (tile && !tile.querySelector('video')) {
+            tile.remove();
+        }
+    }
 }
 
 function removeParticipant(participant) {
