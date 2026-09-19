@@ -188,6 +188,139 @@
             align-self: center;
         }
 
+        .chat-toggle {
+            position: fixed;
+            z-index: 35;
+            right: 18px;
+            bottom: 18px;
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #111;
+            box-shadow: 0 8px 30px #0008;
+        }
+
+        .chat-unread {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            min-width: 19px;
+            height: 19px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--danger);
+            color: #fff;
+            font-size: 11px;
+            display: grid;
+            place-items: center;
+        }
+
+        .chat-panel {
+            position: fixed;
+            z-index: 34;
+            right: 18px;
+            bottom: 78px;
+            width: min(360px, calc(100vw - 24px));
+            height: min(520px, calc(100vh - 110px));
+            display: flex;
+            flex-direction: column;
+            background: #111114f5;
+            border: 1px solid #303038;
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 18px 60px #0009;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #2a2a30;
+            font-weight: 800;
+        }
+
+        .chat-header button {
+            padding: 6px 9px;
+            border-radius: 8px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-empty {
+            margin: auto;
+            color: var(--muted);
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .chat-message {
+            max-width: 85%;
+            align-self: flex-start;
+            padding: 8px 10px;
+            border-radius: 12px 12px 12px 4px;
+            background: var(--panel-2);
+            overflow-wrap: anywhere;
+        }
+
+        .chat-message.mine {
+            align-self: flex-end;
+            background: #f4f4f5;
+            color: #111;
+            border-radius: 12px 12px 4px 12px;
+        }
+
+        .chat-author {
+            font-size: 11px;
+            font-weight: 800;
+            opacity: .7;
+            margin-bottom: 3px;
+        }
+
+        .chat-body {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .chat-time {
+            margin-top: 4px;
+            font-size: 10px;
+            opacity: .55;
+            text-align: right;
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 7px;
+            padding: 10px;
+            border-top: 1px solid #2a2a30;
+        }
+
+        .chat-form input {
+            flex: 1;
+            width: auto;
+            min-width: 0;
+        }
+
+        .chat-form button {
+            flex: 0 0 auto;
+        }
+
         @media (max-width: 640px) {
             header { padding: 10px; }
             .room { width: 100%; }
@@ -204,6 +337,16 @@
             }
             .controls button { flex: 1; min-width: 0; }
             .controls { overflow-x: auto; }
+            .chat-toggle {
+                right: 12px;
+                bottom: 78px;
+            }
+            .chat-panel {
+                right: 12px;
+                bottom: 132px;
+                width: calc(100vw - 24px);
+                height: min(55vh, 460px);
+            }
         }
     </style>
 </head>
@@ -217,6 +360,25 @@
 
 <div id="grid"></div>
 <div id="audio-root" aria-hidden="true"></div>
+
+<button id="chat-toggle" class="chat-toggle" hidden type="button" aria-label="Open chat" title="Chat">
+    Chat
+    <span id="chat-unread" class="chat-unread" hidden>0</span>
+</button>
+
+<section id="chat-panel" class="chat-panel" hidden aria-label="Meeting chat">
+    <div class="chat-header">
+        <span>Chat</span>
+        <button id="chat-close" type="button" aria-label="Close chat">Close</button>
+    </div>
+    <div id="chat-messages" class="chat-messages" aria-live="polite">
+        <div id="chat-empty" class="chat-empty">No messages yet.<br>Messages are available while you are in this room.</div>
+    </div>
+    <form id="chat-form" class="chat-form">
+        <input id="chat-input" maxlength="1000" autocomplete="off" placeholder="Write a message..." aria-label="Chat message">
+        <button id="chat-send" type="submit">Send</button>
+    </form>
+</section>
 
 <div class="controls" hidden>
     <button id="mic">Mute</button>
@@ -249,6 +411,15 @@ const cameraButton = document.getElementById('camera');
 const screenButton = document.getElementById('screen');
 const leaveButton = document.getElementById('leave');
 const quality = document.getElementById('quality');
+const chatToggle = document.getElementById('chat-toggle');
+const chatUnread = document.getElementById('chat-unread');
+const chatPanel = document.getElementById('chat-panel');
+const chatClose = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatEmpty = document.getElementById('chat-empty');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
 let room = null;
@@ -256,6 +427,8 @@ let joining = false;
 let leaving = false;
 let audioUnlockNeeded = false;
 let connectTimeout = null;
+let chatOpen = false;
+let unreadMessages = 0;
 
 const mediaElements = new Map();
 
@@ -263,6 +436,126 @@ function setStatus(message, type = '') {
     status.textContent = message;
     status.classList.toggle('error', type === 'error');
     status.classList.toggle('good', type === 'good');
+}
+
+function updateChatUnread() {
+    chatUnread.textContent = unreadMessages > 99 ? '99+' : String(unreadMessages);
+    chatUnread.hidden = unreadMessages === 0;
+}
+
+function setChatOpen(open) {
+    chatOpen = open;
+    chatPanel.hidden = !open;
+
+    if (open) {
+        unreadMessages = 0;
+        updateChatUnread();
+        requestAnimationFrame(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatInput.focus();
+        });
+    }
+}
+
+function appendChatMessage({ name, text, mine = false, timestamp = Date.now() }) {
+    if (!text) return;
+
+    chatEmpty.hidden = true;
+
+    const message = document.createElement('article');
+    message.className = 'chat-message' + (mine ? ' mine' : '');
+
+    const author = document.createElement('div');
+    author.className = 'chat-author';
+    author.textContent = mine ? 'You' : (name || 'Participant');
+
+    const body = document.createElement('div');
+    body.className = 'chat-body';
+    body.textContent = text;
+
+    const time = document.createElement('div');
+    time.className = 'chat-time';
+    time.textContent = new Date(timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+
+    message.append(author, body, time);
+    chatMessages.appendChild(message);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (!chatOpen && !mine) {
+        unreadMessages += 1;
+        updateChatUnread();
+    }
+}
+
+async function sendChatMessage(event) {
+    event.preventDefault();
+
+    if (!room || leaving) return;
+
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    chatSend.disabled = true;
+
+    try {
+        const payload = {
+            type: 'chat',
+            text: text.slice(0, 1000),
+            timestamp: Date.now(),
+        };
+
+        await room.localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify(payload)),
+            {
+                reliable: true,
+                topic: 'chat',
+            },
+        );
+
+        appendChatMessage({
+            name: room.localParticipant.name || nameInput.value.trim(),
+            text: payload.text,
+            mine: true,
+            timestamp: payload.timestamp,
+        });
+
+        chatInput.value = '';
+        chatInput.focus();
+    } catch (error) {
+        console.error('Chat send failed:', error);
+        setStatus('Could not send the message. Check your connection.', 'error');
+    } finally {
+        chatSend.disabled = false;
+    }
+}
+
+function handleChatData(payload, participant, topic) {
+    if (topic !== 'chat' || !participant) return;
+
+    try {
+        const decoded = new TextDecoder().decode(payload);
+        const message = JSON.parse(decoded);
+
+        if (
+            message?.type !== 'chat' ||
+            typeof message.text !== 'string' ||
+            !message.text.trim()
+        ) {
+            return;
+        }
+
+        appendChatMessage({
+            name: participant.name || participant.identity,
+            text: message.text.slice(0, 1000),
+            mine: participant === room?.localParticipant,
+            timestamp: Number.isFinite(message.timestamp) ? message.timestamp : Date.now(),
+        });
+    } catch (error) {
+        console.warn('Ignoring invalid chat message:', error);
+    }
 }
 
 function initials(name) {
@@ -534,6 +827,9 @@ async function fetchToken(name) {
 
 function setupRoomEvents() {
     room
+        .on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+            handleChatData(payload, participant, topic);
+        })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
         })
@@ -617,6 +913,8 @@ function setupRoomEvents() {
             } else if (state === ConnectionState.Disconnected && !leaving) {
                 setStatus('Disconnected from the meeting.', 'error');
                 controls.hidden = true;
+                chatToggle.hidden = true;
+                setChatOpen(false);
                 joinButton.hidden = false;
                 joinButton.disabled = false;
                 nameInput.disabled = false;
@@ -729,6 +1027,7 @@ async function join() {
         nameInput.disabled = true;
         joinButton.hidden = true;
         controls.hidden = false;
+        chatToggle.hidden = false;
 
         renderAllParticipants();
         await requestMedia();
@@ -748,6 +1047,8 @@ async function join() {
 
         room = null;
         controls.hidden = true;
+        chatToggle.hidden = true;
+        setChatOpen(false);
         joinButton.hidden = false;
         joinButton.disabled = false;
         nameInput.disabled = false;
@@ -853,10 +1154,15 @@ async function leave() {
         room = null;
     }
 
+    chatToggle.hidden = true;
+    setChatOpen(false);
     location.href = '/';
 }
 
 joinButton.addEventListener('click', join);
+chatToggle.addEventListener('click', () => setChatOpen(!chatOpen));
+chatClose.addEventListener('click', () => setChatOpen(false));
+chatForm.addEventListener('submit', sendChatMessage);
 micButton.addEventListener('click', toggleMicrophone);
 cameraButton.addEventListener('click', toggleCamera);
 screenButton.addEventListener('click', toggleScreenShare);
