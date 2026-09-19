@@ -857,6 +857,68 @@
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
         }
+    
+        /* Visual polish: subtle technical hatch background without interfering with the meeting UI. */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            pointer-events: none;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,.035) 25%, transparent 25%) 0 0 / 22px 22px,
+                linear-gradient(315deg, rgba(255,255,255,.022) 25%, transparent 25%) 0 0 / 22px 22px,
+                radial-gradient(circle at 18% 12%, rgba(99,102,241,.11), transparent 30%),
+                radial-gradient(circle at 82% 88%, rgba(168,85,247,.09), transparent 32%);
+            opacity: .7;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent 0,
+                    transparent 9px,
+                    rgba(255,255,255,.018) 9px,
+                    rgba(255,255,255,.018) 10px
+                );
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), rgba(0,0,0,.35));
+        }
+        header {
+            background: rgba(9,9,13,.72);
+            border-bottom-color: rgba(255,255,255,.10);
+            box-shadow: 0 12px 38px rgba(0,0,0,.24);
+        }
+        .tile {
+            background:
+                linear-gradient(145deg, rgba(255,255,255,.025), transparent 48%),
+                rgba(17,17,22,.88);
+            border-color: rgba(255,255,255,.075);
+            box-shadow: 0 12px 36px rgba(0,0,0,.25);
+            backdrop-filter: blur(5px);
+        }
+        .tile:hover {
+            border-color: rgba(255,255,255,.16);
+            box-shadow: 0 16px 42px rgba(0,0,0,.30);
+        }
+        .controls {
+            background: rgba(18,18,23,.78);
+            border-color: rgba(255,255,255,.11);
+            box-shadow: 0 14px 42px rgba(0,0,0,.42);
+        }
+        .hud-pill {
+            background: rgba(20,20,26,.62);
+            border-color: rgba(255,255,255,.10);
+            backdrop-filter: blur(12px);
+        }
+        @media (prefers-reduced-transparency: reduce) {
+            header, .controls, .hud-pill { backdrop-filter: none; }
+        }
+
     </style>
 </head>
 <body>
