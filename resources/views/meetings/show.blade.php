@@ -628,6 +628,22 @@
             color: #fff;
         }
 
+        .toolbar-spacer {
+            margin-left: auto;
+        }
+
+        .toolbar-close {
+            width: 36px;
+            min-width: 36px;
+            min-height: 36px;
+            padding: 0 !important;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            font-size: 20px !important;
+            line-height: 1;
+        }
+
         .document-toolbar select {
             min-height: 36px;
             padding: 6px 9px;
@@ -984,7 +1000,8 @@
         <button id="whiteboard-zoom-in" type="button">+</button>
         <button id="whiteboard-reset" type="button">Reset view</button>
         <button id="whiteboard-clear" type="button">Clear</button>
-        <button id="whiteboard-close" type="button">Close</button>
+        <span class="toolbar-spacer"></span>
+        <button id="whiteboard-close" class="toolbar-close" type="button" aria-label="Close whiteboard" title="Close">×</button>
     </div>
     <canvas id="whiteboard-canvas" tabindex="0"></canvas>
 </section>
@@ -1031,7 +1048,8 @@
         <button id="document-access-toggle" type="button" hidden>Manage access</button>
         <button id="document-download" type="button">Download Word</button>
         <span id="document-status" class="document-status">View only</span>
-        <button id="document-close" type="button">Close</button>
+        <span class="toolbar-spacer"></span>
+        <button id="document-close" class="toolbar-close" type="button" aria-label="Close shared document" title="Close">×</button>
     </div>
     <div id="document-readonly" class="document-readonly" hidden>
         You can read this document, but the host has not given you edit access.
@@ -1070,7 +1088,6 @@
     <button id="mic">Mute</button>
     <button id="camera">Camera off</button>
     <button id="screen">Share screen</button>
-    <button id="screen-view" type="button" hidden>View share</button>
     <button id="whiteboard-toggle" type="button">Whiteboard</button>
     <button id="document-toggle" type="button">Shared doc</button>
     <button id="copy-link" type="button">Copy link</button>
