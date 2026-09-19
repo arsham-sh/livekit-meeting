@@ -202,7 +202,8 @@
                 width: calc(100% - 20px);
                 justify-content: center;
             }
-            .controls button { flex: 1; }
+            .controls button { flex: 1; min-width: 0; }
+            .controls { overflow-x: auto; }
         }
     </style>
 </head>
@@ -220,6 +221,7 @@
 <div class="controls" hidden>
     <button id="mic">Mute</button>
     <button id="camera">Camera off</button>
+    <button id="screen">Share screen</button>
     <button id="leave">Leave</button>
     <span id="quality" class="quality"></span>
 </div>
@@ -231,6 +233,7 @@ import {
     ConnectionState,
     Track,
     VideoPresets,
+    ScreenSharePresets,
     isBrowserSupported,
 } from 'https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm';
 
@@ -243,6 +246,7 @@ const status = document.getElementById('status');
 const controls = document.querySelector('.controls');
 const micButton = document.getElementById('mic');
 const cameraButton = document.getElementById('camera');
+const screenButton = document.getElementById('screen');
 const leaveButton = document.getElementById('leave');
 const quality = document.getElementById('quality');
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
@@ -274,15 +278,18 @@ function identityKey(participant) {
     return participant.identity;
 }
 
-function tileFor(participant) {
+function tileFor(participant, source = Track.Source.Camera) {
     const identity = identityKey(participant);
-    const selector = `[data-identity="${CSS.escape(identity)}"]`;
+    const tileKey = `${identity}:${source}`;
+    const selector = `[data-tile-key="${CSS.escape(tileKey)}"]`;
     let tile = grid.querySelector(selector);
 
     if (!tile) {
         tile = document.createElement('div');
         tile.className = 'tile';
         tile.dataset.identity = identity;
+        tile.dataset.source = source;
+        tile.dataset.tileKey = tileKey;
 
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
@@ -296,6 +303,8 @@ function tileFor(participant) {
         tile.append(avatar, name, badge);
         grid.appendChild(tile);
     }
+
+    tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
 
     tile.querySelector('.name').textContent = participant.name || participant.identity;
     tile.querySelector('.avatar').textContent = initials(participant.name || participant.identity);
@@ -336,11 +345,12 @@ function removeParticipant(participant) {
         if (publication.track) detachTrack(publication.track);
     });
 
-    grid.querySelector(`[data-identity="${CSS.escape(participant.identity)}"]`)?.remove();
+    grid.querySelectorAll(`[data-identity="${CSS.escape(participant.identity)}"]`).forEach(tile => tile.remove());
 }
 
 function attachVideoTrack(track, participant, publication) {
-    const tile = tileFor(participant);
+    const source = publication.source || Track.Source.Camera;
+    const tile = tileFor(participant, source);
     const sid = publication.trackSid || track.sid;
 
     if (mediaElements.has(sid)) {
@@ -352,9 +362,9 @@ function attachVideoTrack(track, participant, publication) {
     element.playsInline = true;
     element.muted = participant === room?.localParticipant;
     element.dataset.trackSid = sid;
-    element.dataset.source = publication.source || '';
+    element.dataset.source = source;
 
-    const oldElement = tile.querySelector(`video[data-source="${CSS.escape(publication.source || '')}"]`);
+    const oldElement = tile.querySelector(`video[data-source="${CSS.escape(source)}"]`);
     if (oldElement) {
         oldElement.remove();
     }
@@ -396,7 +406,7 @@ function attachTrack(track, participant, publication) {
 }
 
 function renderParticipant(participant) {
-    tileFor(participant);
+    tileFor(participant, Track.Source.Camera);
 
     participant.trackPublications.forEach(publication => {
         if (publication.track) {
@@ -445,9 +455,12 @@ function updateButtons() {
 
     const micOn = !!micPublication && !micPublication.isMuted && micPublication.isEnabled !== false;
     const cameraOn = !!cameraPublication && !cameraPublication.isMuted && cameraPublication.isEnabled !== false;
+    const screenPublication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+    const screenOn = !!screenPublication && !screenPublication.isMuted && screenPublication.isEnabled !== false;
 
     micButton.textContent = micOn ? 'Mute' : 'Unmute';
     cameraButton.textContent = cameraOn ? 'Camera off' : 'Camera on';
+    screenButton.textContent = screenOn ? 'Stop sharing' : 'Share screen';
 
     updateBadge(room.localParticipant);
 }
@@ -518,11 +531,14 @@ function setupRoomEvents() {
             detachTrack(track);
         })
         .on(RoomEvent.TrackPublished, (publication, participant) => {
-            tileFor(participant);
+            tileFor(participant, publication.source || Track.Source.Camera);
             updateBadge(participant);
         })
         .on(RoomEvent.TrackUnpublished, (publication, participant) => {
             if (publication.track) detachTrack(publication.track);
+            if (publication.source === Track.Source.ScreenShare) {
+                grid.querySelector(`[data-tile-key="${CSS.escape(participant.identity + ':' + Track.Source.ScreenShare)}"]`)?.remove();
+            }
             updateBadge(participant);
         })
         .on(RoomEvent.ParticipantConnected, participant => {
@@ -539,6 +555,9 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.LocalTrackUnpublished, publication => {
             if (publication.track) detachTrack(publication.track);
+            if (publication.source === Track.Source.ScreenShare) {
+                grid.querySelector(`[data-tile-key="${CSS.escape(room.localParticipant.identity + ':' + Track.Source.ScreenShare)}"]`)?.remove();
+            }
             updateButtons();
         })
         .on(RoomEvent.TrackMuted, (publication, participant) => {
@@ -773,6 +792,40 @@ async function toggleCamera() {
     }
 }
 
+async function toggleScreenShare() {
+    if (!room || leaving) return;
+
+    screenButton.disabled = true;
+
+    try {
+        const publication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+        const sharing = !!publication && !publication.isMuted && publication.isEnabled !== false;
+
+        if (sharing) {
+            await room.localParticipant.setScreenShareEnabled(false);
+        } else {
+            await room.localParticipant.setScreenShareEnabled(true, {
+                audio: false,
+                contentHint: 'detail',
+                resolution: ScreenSharePresets.h1080fps15.resolution,
+                selfBrowserSurface: 'exclude',
+                surfaceSwitching: 'include',
+            });
+        }
+
+        updateButtons();
+    } catch (error) {
+        console.error('Screen share toggle failed:', error);
+        if (error?.name === 'NotAllowedError' || /cancel|denied/i.test(error?.message || '')) {
+            setStatus('Screen sharing was cancelled.', 'error');
+        } else {
+            setStatus('Could not start screen sharing. Check browser support and permissions.', 'error');
+        }
+    } finally {
+        screenButton.disabled = false;
+    }
+}
+
 async function leave() {
     if (leaving) return;
 
@@ -796,6 +849,7 @@ async function leave() {
 joinButton.addEventListener('click', join);
 micButton.addEventListener('click', toggleMicrophone);
 cameraButton.addEventListener('click', toggleCamera);
+screenButton.addEventListener('click', toggleScreenShare);
 leaveButton.addEventListener('click', leave);
 
 nameInput.addEventListener('keydown', event => {
