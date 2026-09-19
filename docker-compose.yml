@@ -1,6 +1,6 @@
 services:
   livekit:
-    image: livekit/livekit-server:latest
+    image: livekit/livekit-server:v1.13.7
     # Local Windows uses 127.0.0.1. Production must set LIVEKIT_NODE_IP
     # to the server's publicly reachable IP address.
     command: --dev --bind 0.0.0.0 --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1} --udp-port 7882
