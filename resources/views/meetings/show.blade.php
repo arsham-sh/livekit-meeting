@@ -77,6 +77,38 @@
             background: #0d0d0fee;
             backdrop-filter: blur(12px);
         }
+        .top-hud {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .hud-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 5px 9px;
+            border: 1px solid #2d2d35;
+            border-radius: 999px;
+            background: rgba(24,24,30,.78);
+            color: #d4d4d8;
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+            box-shadow: inset 0 1px rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.16);
+        }
+        .hud-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #71717a;
+            box-shadow: 0 0 0 3px rgba(113,113,122,.12);
+        }
+        .hud-dot.good { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.12), 0 0 14px rgba(74,222,128,.35); }
+        .hud-dot.warn { background: #facc15; box-shadow: 0 0 0 3px rgba(250,204,21,.12), 0 0 14px rgba(250,204,21,.25); }
+        .hud-dot.bad { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.12), 0 0 14px rgba(239,68,68,.3); }
         .room {
             min-width: 0;
             overflow: hidden;
@@ -136,7 +168,40 @@
             box-shadow: 0 8px 30px rgba(0,0,0,.22);
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
-        .tile:hover { border-color: #3a3a44; }
+        .tile:hover { border-color: #3a3a44; transform: translateY(-1px); }
+        .tile.screen-share {
+            border-color: rgba(248,113,113,.62);
+            box-shadow: 0 0 0 1px rgba(239,68,68,.12), 0 18px 55px rgba(239,68,68,.10);
+        }
+        .tile.screen-share::before {
+            content: "SCREEN SHARING";
+            position: absolute;
+            z-index: 5;
+            top: 10px;
+            left: 10px;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: rgba(127,29,29,.82);
+            color: #fecaca;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: .08em;
+            box-shadow: 0 4px 16px rgba(0,0,0,.24);
+        }
+        .screen-focus {
+            position: absolute;
+            z-index: 7;
+            right: 10px;
+            bottom: 10px;
+            min-width: 34px;
+            min-height: 34px;
+            padding: 0 9px;
+            border-radius: 10px;
+            background: rgba(239,68,68,.92);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.18);
+            box-shadow: 0 8px 24px rgba(0,0,0,.3);
+        }
         .tile.zoomed { z-index: 8; box-shadow: 0 20px 60px rgba(0,0,0,.55); }
         .tile video {
             display: block;
@@ -433,6 +498,16 @@
             box-shadow: 0 10px 35px #0008;
         }
         .controls button { white-space: nowrap; }
+        #screen.sharing {
+            background: #dc2626;
+            color: #fff;
+            box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(220,38,38,.30);
+            animation: sharePulse 1.8s ease-in-out infinite;
+        }
+        @keyframes sharePulse {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(220,38,38,.25); }
+            50% { box-shadow: 0 0 0 4px rgba(220,38,38,.12), 0 10px 30px rgba(220,38,38,.38); }
+        }
         #leave { background: var(--danger); color: #fff; }
         #join { background: var(--accent); color: #111; }
         .quality {
@@ -443,6 +518,60 @@
             font-size: 11px;
             color: var(--muted);
             padding: 0 3px;
+        }
+
+        #presentation {
+            position: fixed;
+            z-index: 120;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background:
+                radial-gradient(circle at 50% 20%, rgba(239,68,68,.08), transparent 35%),
+                #050507;
+        }
+        #presentation[hidden] { display: none !important; }
+        .presentation-bar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+            background: rgba(10,10,13,.82);
+            border-bottom: 1px solid #29292f;
+            backdrop-filter: blur(18px);
+        }
+        .presentation-title {
+            min-width: 0;
+            margin-right: auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 850;
+        }
+        .presentation-live {
+            color: #fecaca;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: .08em;
+        }
+        #presentation-video {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #020204;
+        }
+        .presentation-bar button {
+            min-height: 36px;
+            padding: 6px 10px;
+            background: #1f1f25;
+            border: 1px solid #34343d;
+        }
+        .presentation-bar button.danger {
+            background: #dc2626;
+            color: #fff;
         }
 
         .chat-toggle {
@@ -548,6 +677,12 @@
 
         @media (max-width: 760px) {
             body { overflow: hidden; }
+            .top-hud { grid-column: 1 / -1; justify-self: stretch; overflow-x: auto; scrollbar-width: none; }
+            .top-hud::-webkit-scrollbar { display: none; }
+            .hud-pill { flex: 0 0 auto; }
+            .presentation-bar { padding-bottom: 8px; }
+            .presentation-bar button { min-height: 40px; }
+
             header {
                 grid-template-columns: minmax(0, 1fr) auto;
                 gap: 7px;
@@ -656,6 +791,7 @@
 
         @media (max-width: 420px) {
             .tile { min-height: 190px; }
+            .presentation-bar .presentation-live { display: none; }
             .avatar { width: 72px; height: 72px; }
             .controls {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -669,10 +805,25 @@
     <input id="name" placeholder="Your name" maxlength="80" autocomplete="name">
     <button id="join">Join</button>
     <div id="status" class="status">Enter your name and join the room.</div>
+    <div class="top-hud" aria-label="Meeting status">
+        <span class="hud-pill"><span id="network-dot" class="hud-dot"></span><span id="network-label">Offline</span></span>
+        <span class="hud-pill">👥 <span id="participant-count-top">1</span></span>
+        <span id="share-indicator" class="hud-pill" hidden>🔴 Sharing</span>
+    </div>
 </header>
 
 <div id="grid"></div>
 <div id="audio-root" aria-hidden="true"></div>
+
+<section id="presentation" hidden aria-label="Screen share presentation">
+    <div class="presentation-bar">
+        <span class="presentation-live">LIVE</span>
+        <span id="presentation-title" class="presentation-title">Screen share</span>
+        <button id="presentation-fullscreen" type="button">Fullscreen</button>
+        <button id="presentation-close" class="danger" type="button">Close</button>
+    </div>
+    <video id="presentation-video" autoplay playsinline></video>
+</section>
 
 <section id="whiteboard" hidden aria-label="Collaborative whiteboard">
     <div class="whiteboard-toolbar">
@@ -746,7 +897,6 @@
     <button id="whiteboard-toggle" type="button">Whiteboard</button>
     <button id="document-toggle" type="button">Shared doc</button>
     <button id="copy-link" type="button">Copy link</button>
-    <button id="fullscreen" type="button">Fullscreen</button>
     <button id="leave">Leave</button>
     <span id="participant-count" class="quality">1 participant</span>
     <span id="quality" class="quality"></span>
@@ -798,7 +948,15 @@ let whiteboardOffsetX = 0;
 let whiteboardOffsetY = 0;
 const zoomLevels = new Map();
 const copyLinkButton = document.getElementById('copy-link');
-const fullscreenButton = document.getElementById('fullscreen');
+const presentation = document.getElementById('presentation');
+const presentationVideo = document.getElementById('presentation-video');
+const presentationTitle = document.getElementById('presentation-title');
+const presentationClose = document.getElementById('presentation-close');
+const presentationFullscreen = document.getElementById('presentation-fullscreen');
+const networkDot = document.getElementById('network-dot');
+const networkLabel = document.getElementById('network-label');
+const participantCountTop = document.getElementById('participant-count-top');
+const shareIndicator = document.getElementById('share-indicator');
 const participantCount = document.getElementById('participant-count');
 const quality = document.getElementById('quality');
 const chatToggle = document.getElementById('chat-toggle');
@@ -833,6 +991,7 @@ let chatOpen = false;
 let unreadMessages = 0;
 let lastJoinAttempt = 0;
 let reconnecting = false;
+let presentationTrack = null;
 
 const mediaElements = new Map();
 
@@ -1324,7 +1483,9 @@ function attachTileZoomGesture(tile, participant) {
 
 function updateGridDensity() {
     const count = grid.querySelectorAll('.tile').length;
-    participantCount.textContent = count + (count === 1 ? ' participant' : ' participants');
+    const label = count + (count === 1 ? ' participant' : ' participants');
+    participantCount.textContent = label;
+    participantCountTop.textContent = String(count);
     grid.classList.toggle('dense', count >= 13);
     grid.classList.toggle('compact', count >= 7 && count < 13);
 }
@@ -1340,16 +1501,28 @@ function updateBadge(participant) {
 
     tile.querySelector('.badge').textContent = parts.join(' · ');
     tile.querySelector('.badge').hidden = parts.length === 0;
+    tile.classList.toggle('camera-off', !!cameraPublication && (cameraPublication.isMuted || cameraPublication.isEnabled === false));
 }
 
 function currentVideoPublication(participant) {
-    const screen = participant.getTrackPublication(Track.Source.ScreenShare);
-    if (screen?.track && screen.isMuted !== true && screen.isEnabled !== false) return screen;
+    const publications = participant.videoTrackPublications
+        ? [...participant.videoTrackPublications.values()]
+        : [];
+    const screen = publications.find(publication =>
+        publication.source === Track.Source.ScreenShare &&
+        publication.track &&
+        publication.isMuted !== true &&
+        publication.isEnabled !== false
+    );
+    if (screen) return screen;
 
-    const camera = participant.getTrackPublication(Track.Source.Camera);
-    if (camera?.track && camera.isMuted !== true && camera.isEnabled !== false) return camera;
-
-    return null;
+    const camera = publications.find(publication =>
+        publication.source === Track.Source.Camera &&
+        publication.track &&
+        publication.isMuted !== true &&
+        publication.isEnabled !== false
+    );
+    return camera || null;
 }
 
 function removeVideoForParticipant(participant) {
@@ -1366,6 +1539,8 @@ function removeVideoForParticipant(participant) {
 
     tile.classList.remove('screen-share');
     tile.classList.add('no-video');
+    tile.querySelector('.screen-focus')?.remove();
+    if (presentationTrack?.participant === participant) closePresentation();
 }
 
 function renderParticipantVideo(participant) {
@@ -1384,12 +1559,14 @@ function renderParticipantVideo(participant) {
     if (!sid) return;
 
     const source = publication.source || track.source || Track.Source.Camera;
+    const isScreenShare = source === Track.Source.ScreenShare;
     const existing = tile.querySelector('video');
 
     if (existing?.dataset.trackSid === sid) {
         tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
         tile.classList.remove('no-video');
-        tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
+        tile.classList.toggle('screen-share', isScreenShare);
+        syncScreenFocusButton(tile, participant, isScreenShare);
         applyParticipantZoom(participant);
         return;
     }
@@ -1411,10 +1588,89 @@ function renderParticipantVideo(participant) {
     tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
     tile.insertBefore(element, tile.querySelector('.avatar'));
     tile.classList.remove('no-video');
-    tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
+    tile.classList.toggle('screen-share', isScreenShare);
+    syncScreenFocusButton(tile, participant, isScreenShare);
     mediaElements.set(sid, element);
     applyParticipantZoom(participant);
     updateGridDensity();
+}
+
+function syncScreenFocusButton(tile, participant, isScreenShare) {
+    let button = tile.querySelector('.screen-focus');
+    if (!isScreenShare) {
+        button?.remove();
+        if (presentationTrack?.participant === participant) closePresentation();
+        return;
+    }
+    if (!button) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'screen-focus';
+        button.textContent = '⛶';
+        button.title = 'Open screen share fullscreen';
+        button.setAttribute('aria-label', 'Open screen share fullscreen');
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            openPresentation(participant);
+        });
+        tile.appendChild(button);
+    }
+}
+
+function openPresentation(participant) {
+    const publication = participant && currentVideoPublication(participant);
+    if (!publication?.track || (publication.source || publication.track.source) !== Track.Source.ScreenShare) return;
+
+    closePresentation();
+    presentationTrack = { track: publication.track, participant };
+    presentationTitle.textContent = (participant.name || participant.identity) + ' · Screen share';
+    const attached = publication.track.attach(presentationVideo);
+    presentationVideo.autoplay = true;
+    presentationVideo.playsInline = true;
+    presentationVideo.muted = true;
+    presentation.hidden = false;
+    presentationVideo.play().catch(() => {});
+}
+
+function closePresentation() {
+    if (presentationTrack?.track) {
+        try { presentationTrack.track.detach(presentationVideo); } catch {}
+    }
+    presentationTrack = null;
+    presentation.hidden = true;
+}
+
+async function fullscreenPresentation() {
+    try {
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else if (presentation.requestFullscreen) {
+            await presentation.requestFullscreen();
+        } else if (presentationVideo.requestFullscreen) {
+            await presentationVideo.requestFullscreen();
+        }
+    } catch (error) {
+        console.warn('Presentation fullscreen failed:', error);
+    }
+}
+
+function updateNetworkHud() {
+    if (!room || room.state !== ConnectionState.Connected) {
+        networkDot.className = 'hud-dot';
+        networkLabel.textContent = reconnecting ? 'Reconnecting' : 'Offline';
+        return;
+    }
+    const value = String(room.localParticipant.connectionQuality || 'unknown').toLowerCase();
+    networkDot.className = 'hud-dot ' + (value === 'excellent' ? 'good' : value === 'good' ? 'good' : value === 'poor' ? 'warn' : value === 'lost' ? 'bad' : '');
+    networkLabel.textContent = value === 'excellent' ? 'Excellent' : value === 'good' ? 'Good' : value === 'poor' ? 'Poor' : value === 'lost' ? 'Lost' : 'Connecting';
+}
+
+function updateShareButton() {
+    const publication = room?.localParticipant?.getTrackPublication(Track.Source.ScreenShare);
+    const sharing = !!publication && !publication.isMuted && publication.isEnabled !== false && !!publication.track;
+    screenButton.classList.toggle('sharing', sharing);
+    screenButton.textContent = sharing ? 'Stop sharing' : 'Share screen';
+    shareIndicator.hidden = !sharing;
 }
 
 function detachTrack(track) {
@@ -1925,11 +2181,13 @@ function setupRoomEvents() {
             if (publication.track) attachTrack(publication.track, room.localParticipant, publication);
             renderParticipantVideo(room.localParticipant);
             updateButtons();
+            updateShareButton();
         })
         .on(RoomEvent.LocalTrackUnpublished, publication => {
             if (publication.track) detachTrack(publication.track);
             renderParticipantVideo(room.localParticipant);
             updateButtons();
+            updateShareButton();
         })
         .on(RoomEvent.TrackMuted, (publication, participant) => {
             if (participant) updateBadge(participant);
@@ -1949,6 +2207,7 @@ function setupRoomEvents() {
         .on(RoomEvent.ConnectionQualityChanged, (connectionQuality, participant) => {
             if (participant === room?.localParticipant) {
                 quality.textContent = 'Connection: ' + connectionQuality;
+                updateNetworkHud();
             }
         })
         .on(RoomEvent.AudioPlaybackStatusChanged, () => {
@@ -1968,6 +2227,7 @@ function setupRoomEvents() {
             }
         })
         .on(RoomEvent.ConnectionStateChanged, state => {
+            updateNetworkHud();
             if (state === ConnectionState.Connected) {
                 electDocumentHost();
                 updateDocumentPermissionUi();
@@ -1998,6 +2258,8 @@ function setupRoomEvents() {
             reconnecting = false;
             setStatus('Connection restored.', 'good');
             renderAllParticipants();
+            updateNetworkHud();
+            updateShareButton();
         })
         .on(RoomEvent.ParticipantMetadataChanged, (_metadata, participant) => {
             if (participant) renderParticipant(participant);
@@ -2135,6 +2397,8 @@ async function join() {
         ]);
 
         updateButtons();
+        updateShareButton();
+        updateNetworkHud();
         renderParticipantVideo(room.localParticipant);
 
         const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
@@ -2220,6 +2484,7 @@ async function toggleCamera() {
         await room.localParticipant.setCameraEnabled(!enabled);
         renderParticipantVideo(room.localParticipant);
         updateButtons();
+        updateShareButton();
     } catch (error) {
         console.error('Camera toggle failed:', error);
         setStatus('Could not change camera state.', 'error');
@@ -2334,17 +2599,8 @@ copyLinkButton.addEventListener('click', async () => {
         setStatus('Copy failed. Copy the address from your browser.', 'error');
     }
 });
-fullscreenButton.addEventListener('click', async () => {
-    try {
-        if (document.fullscreenElement) {
-            await document.exitFullscreen();
-        } else if (document.documentElement.requestFullscreen) {
-            await document.documentElement.requestFullscreen();
-        }
-    } catch (error) {
-        console.warn('Fullscreen failed:', error);
-    }
-});
+presentationClose.addEventListener('click', closePresentation);
+presentationFullscreen.addEventListener('click', fullscreenPresentation);
 whiteboardPen.addEventListener('click', () => {
     whiteboardMode = 'pen';
     whiteboardPen.classList.add('active');
@@ -2410,7 +2666,7 @@ window.addEventListener('offline', () => {
 });
 
 document.addEventListener('fullscreenchange', () => {
-    fullscreenButton.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
+    presentationFullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
 });
 </script>
 </body>
