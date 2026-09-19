@@ -1826,7 +1826,7 @@ function stopPingMonitor() {
     pingLabel.textContent = 'Ping -- ms';
 }
 
-async async function ensureRemoteScreenShareSubscribed(publication, participant) {
+async function ensureRemoteScreenShareSubscribed(publication, participant) {
     if (
         !publication ||
         publication.source !== Track.Source.ScreenShare ||
