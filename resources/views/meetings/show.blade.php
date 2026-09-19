@@ -265,8 +265,6 @@
             transition: transform .18s ease;
         }
         .tile.screen-share video { object-fit: contain; }
-        /* Keep the presenter's own screen preview slightly soft; remote viewers stay sharp. */
-        .tile.local-screen-share video { filter: blur(1.5px); }
         .avatar {
             width: 96px;
             height: 96px;
@@ -442,6 +440,187 @@
         .document-toolbar .document-title {
             font-weight: 850;
             margin-right: 5px;
+        }
+
+        .document-toolbar {
+            min-height: 72px;
+            gap: 10px;
+            padding: 9px 12px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,.99), rgba(248,248,246,.96));
+            border-bottom: 1px solid #d9d9dc;
+            box-shadow: 0 10px 30px rgba(20,20,30,.12);
+        }
+        .document-brand {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 168px;
+            padding-right: 10px;
+            border-right: 1px solid #dedee1;
+        }
+        .document-brand-icon {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #18181b, #3f3f46);
+            color: #fff;
+            font-size: 16px;
+            box-shadow: 0 6px 16px rgba(0,0,0,.18);
+        }
+        .document-brand strong,
+        .document-brand small {
+            display: block;
+        }
+        .document-brand strong {
+            font-size: 12px;
+            letter-spacing: -.01em;
+        }
+        .document-brand small {
+            margin-top: 2px;
+            color: #85858c;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .document-nav-scroll {
+            min-width: 0;
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .document-nav-scroll::-webkit-scrollbar { display: none; }
+        .document-tool-group {
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 8px 5px 6px;
+            margin: 0;
+            border: 1px solid #e2e2e5;
+            border-radius: 12px;
+            background: rgba(255,255,255,.8);
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        }
+        .document-tool-group:last-of-type { border-right: 1px solid #e2e2e5; }
+        .document-group-label {
+            align-self: stretch;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 4px 0 2px;
+            color: #9a9aa0;
+            font-size: 8px;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .document-toolbar select {
+            min-height: 32px;
+            max-width: 132px;
+            padding: 5px 28px 5px 9px;
+            border: 1px solid #d8d8dc;
+            border-radius: 8px;
+            background: #fff;
+            color: #242428;
+            font: 700 11px system-ui, sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+        .document-toolbar select:focus {
+            border-color: #8b8b94;
+            box-shadow: 0 0 0 3px rgba(24,24,27,.08);
+        }
+        .document-toolbar button {
+            min-height: 32px;
+            padding: 5px 9px;
+            border-radius: 8px;
+            background: #f0f0f2;
+            border-color: #dadade;
+            color: #28282d;
+            font-size: 11px;
+            font-weight: 800;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04);
+        }
+        .document-toolbar button:hover {
+            filter: none;
+            background: #e7e7ea;
+            border-color: #c9c9ce;
+        }
+        .document-toolbar button:focus-visible {
+            outline: 2px solid #71717a;
+            outline-offset: 2px;
+        }
+        .document-color-control {
+            position: relative;
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            border: 1px solid #d8d8dc;
+            border-radius: 8px;
+            background: #fff;
+            color: #27272a;
+            font: 800 13px Georgia, serif;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .document-color-control.highlight { color: #b08a00; }
+        .document-color-control input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            min-height: 100%;
+            padding: 0;
+            border: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .document-actions {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+        .document-action {
+            white-space: nowrap;
+        }
+        .document-action.primary {
+            background: #18181b;
+            border-color: #18181b;
+            color: #fff;
+            box-shadow: 0 5px 14px rgba(24,24,27,.18);
+        }
+        .document-action.secondary {
+            background: #fff;
+        }
+        .document-status {
+            margin-left: 2px;
+            padding: 7px 9px;
+            border: 1px solid #e2e2e5;
+            border-radius: 8px;
+            background: #fafafa;
+            color: #71717a;
+            font-size: 10px;
+            font-weight: 800;
+        }
+        .document-toolbar .toolbar-close {
+            min-width: 34px;
+            width: 34px;
+            height: 34px;
+            min-height: 34px;
+            padding: 0;
+            border-radius: 9px;
+            background: #ececef;
+            font-size: 19px;
+            line-height: 1;
         }
         .document-tool-group {
             display: inline-flex;
@@ -843,6 +1022,32 @@
             .controls::-webkit-scrollbar { display: none; }
             .controls button { flex: 1 0 auto; min-width: 78px; }
 
+            .document-toolbar {
+                min-height: 58px;
+                flex-wrap: nowrap;
+                padding: 7px 8px;
+            }
+            .document-brand {
+                min-width: 138px;
+                padding-right: 7px;
+            }
+            .document-brand-icon {
+                width: 30px;
+                height: 30px;
+            }
+            .document-brand small { display: none; }
+            .document-nav-scroll { order: 2; }
+            .document-actions {
+                order: 3;
+                margin-left: 0;
+            }
+            .document-action.secondary,
+            .document-status {
+                display: none;
+            }
+            .document-toolbar select { max-width: 118px; }
+            .document-group-label { display: none; }
+
             #document-editor {
                 width: calc(100% - 12px);
                 margin: 7px auto;
@@ -1022,55 +1227,79 @@
 
 <section id="shared-document" hidden aria-label="Shared document">
     <div class="document-toolbar">
-        <span class="document-title">Shared document</span>
-        <span class="document-tool-group" aria-label="Text style">
-            <select data-doc-command="formatBlock" aria-label="Text style" title="Text style">
-                <option value="p">Paragraph</option>
-                <option value="h1">Title</option>
-                <option value="h2">Heading 1</option>
-                <option value="h3">Heading 2</option>
-                <option value="blockquote">Quote</option>
-            </select>
-            <select data-doc-command="fontName" aria-label="Font" title="Font">
-                <option value="Georgia">Georgia</option>
-                <option value="Arial">Arial</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Courier New">Monospace</option>
-            </select>
-            <select data-doc-command="fontSize" aria-label="Text size" title="Text size">
-                <option value="3">Normal</option>
-                <option value="1">Small</option>
-                <option value="4">Large</option>
-                <option value="5">Huge</option>
-            </select>
-        </span>
-        <span class="document-tool-group" aria-label="Formatting">
-            <button type="button" data-doc-command="bold" title="Bold"><b>B</b></button>
-            <button type="button" data-doc-command="italic" title="Italic"><i>I</i></button>
-            <button type="button" data-doc-command="underline" title="Underline"><u>U</u></button>
-            <button type="button" data-doc-command="strikeThrough" title="Strikethrough"><s>S</s></button>
-            <button type="button" data-doc-command="removeFormat" title="Clear formatting">Clear</button>
-        </span>
-        <span class="document-tool-group" aria-label="Alignment and lists">
-            <button type="button" data-doc-command="justifyLeft" title="Align left">≡ Left</button>
-            <button type="button" data-doc-command="justifyCenter" title="Align center">≡ Center</button>
-            <button type="button" data-doc-command="justifyRight" title="Align right">≡ Right</button>
-            <button type="button" data-doc-command="insertUnorderedList" title="Bulleted list">• List</button>
-            <button type="button" data-doc-command="insertOrderedList" title="Numbered list">1. List</button>
-            <button type="button" data-doc-command="outdent" title="Decrease indent">Outdent</button>
-            <button type="button" data-doc-command="indent" title="Increase indent">Indent</button>
-        </span>
-        <span class="document-tool-group" aria-label="History and colors">
-            <button type="button" data-doc-command="undo" title="Undo">↶</button>
-            <button type="button" data-doc-command="redo" title="Redo">↷</button>
-            <input type="color" data-doc-command="foreColor" value="#171717" aria-label="Text color" title="Text color">
-            <input type="color" data-doc-command="hiliteColor" value="#fff2a8" aria-label="Highlight color" title="Highlight color">
-        </span>
-        <button id="document-access-toggle" type="button" hidden>Manage access</button>
-        <button id="document-download" type="button">Download Word</button>
-        <span id="document-status" class="document-status">View only</span>
-        <span class="toolbar-spacer"></span>
-        <button id="document-close" class="toolbar-close" type="button" aria-label="Close shared document" title="Close">×</button>
+        <div class="document-brand">
+            <span class="document-brand-icon">✦</span>
+            <span>
+                <strong>Shared document</strong>
+                <small>Collaborative notes</small>
+            </span>
+        </div>
+
+        <div class="document-nav-scroll" role="toolbar" aria-label="Document editing tools">
+            <div class="document-tool-group" aria-label="Text style">
+                <span class="document-group-label">Style</span>
+                <select data-doc-command="formatBlock" aria-label="Text style" title="Text style">
+                    <option value="p">Paragraph</option>
+                    <option value="h1">Title</option>
+                    <option value="h2">Heading 1</option>
+                    <option value="h3">Heading 2</option>
+                    <option value="blockquote">Quote</option>
+                </select>
+                <select data-doc-command="fontName" aria-label="Font" title="Font">
+                    <option value="Georgia">Georgia</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Courier New">Monospace</option>
+                </select>
+                <select data-doc-command="fontSize" aria-label="Text size" title="Text size">
+                    <option value="3">Normal</option>
+                    <option value="1">Small</option>
+                    <option value="4">Large</option>
+                    <option value="5">Huge</option>
+                </select>
+            </div>
+
+            <div class="document-tool-group" aria-label="Formatting">
+                <span class="document-group-label">Format</span>
+                <button type="button" data-doc-command="bold" title="Bold"><b>B</b></button>
+                <button type="button" data-doc-command="italic" title="Italic"><i>I</i></button>
+                <button type="button" data-doc-command="underline" title="Underline"><u>U</u></button>
+                <button type="button" data-doc-command="strikeThrough" title="Strikethrough"><s>S</s></button>
+                <button type="button" data-doc-command="removeFormat" title="Clear formatting">Clear</button>
+            </div>
+
+            <div class="document-tool-group" aria-label="Alignment and lists">
+                <span class="document-group-label">Layout</span>
+                <button type="button" data-doc-command="justifyLeft" title="Align left">Left</button>
+                <button type="button" data-doc-command="justifyCenter" title="Align center">Center</button>
+                <button type="button" data-doc-command="justifyRight" title="Align right">Right</button>
+                <button type="button" data-doc-command="insertUnorderedList" title="Bulleted list">• List</button>
+                <button type="button" data-doc-command="insertOrderedList" title="Numbered list">1. List</button>
+                <button type="button" data-doc-command="outdent" title="Decrease indent">Outdent</button>
+                <button type="button" data-doc-command="indent" title="Increase indent">Indent</button>
+            </div>
+
+            <div class="document-tool-group" aria-label="History and colors">
+                <span class="document-group-label">Edit</span>
+                <button type="button" data-doc-command="undo" title="Undo">↶</button>
+                <button type="button" data-doc-command="redo" title="Redo">↷</button>
+                <label class="document-color-control" title="Text color">
+                    <span>A</span>
+                    <input type="color" data-doc-command="foreColor" value="#171717" aria-label="Text color">
+                </label>
+                <label class="document-color-control highlight" title="Highlight color">
+                    <span>▰</span>
+                    <input type="color" data-doc-command="hiliteColor" value="#fff2a8" aria-label="Highlight color">
+                </label>
+            </div>
+        </div>
+
+        <div class="document-actions">
+            <button id="document-access-toggle" class="document-action secondary" type="button" hidden>Manage access</button>
+            <button id="document-download" class="document-action primary" type="button">Download Word</button>
+            <span id="document-status" class="document-status">View only</span>
+            <button id="document-close" class="toolbar-close" type="button" aria-label="Close shared document" title="Close">×</button>
+        </div>
     </div>
     <div id="document-readonly" class="document-readonly" hidden>
         You can read this document, but the host has not given you edit access.
@@ -1779,9 +2008,20 @@ function currentVideoPublication(participant) {
         publication.isEnabled !== false
     );
 
-    return publications.find(publication =>
+    const screenShare = publications.find(publication =>
         publication.source === Track.Source.ScreenShare && active(publication)
-    ) || publications.find(publication =>
+    );
+
+    // Never render the outgoing screen-share track back into the sender's tile.
+    // The sender already has the native browser share preview, and decoding the
+    // same stream again adds avoidable CPU/GPU work and can make the presenter lag.
+    if (participant === room?.localParticipant && screenShare) {
+        return publications.find(publication =>
+            publication.source === Track.Source.Camera && active(publication)
+        ) || null;
+    }
+
+    return screenShare || publications.find(publication =>
         publication.source === Track.Source.Camera && active(publication)
     ) || null;
 }
@@ -1798,7 +2038,7 @@ function removeVideoForParticipant(participant) {
         }
     }
 
-    tile.classList.remove('screen-share', 'local-screen-share');
+    tile.classList.remove('screen-share');
     tile.classList.add('no-video');
     tile.querySelector('.screen-focus')?.remove();
     if (presentationTrack?.participant === participant) closePresentation();
@@ -1827,7 +2067,6 @@ function renderParticipantVideo(participant) {
         tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
         tile.classList.remove('no-video');
         tile.classList.toggle('screen-share', isScreenShare);
-        tile.classList.toggle('local-screen-share', isScreenShare && participant === room?.localParticipant);
         syncScreenFocusButton(tile, participant, isScreenShare);
         applyParticipantZoom(participant);
         return;
