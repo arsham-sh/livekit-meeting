@@ -2858,10 +2858,8 @@ async function leave() {
     }
 
     stopPingMonitor();
-    if (screenShareRetryTimer) {
-        clearTimeout(screenShareRetryTimer);
-        screenShareRetryTimer = null;
-    }
+    screenShareRetryTimers.forEach(timer => clearTimeout(timer));
+    screenShareRetryTimers.clear();
 
     if (room) {
         const oldRoom = room;
