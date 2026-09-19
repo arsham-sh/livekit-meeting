@@ -1467,6 +1467,8 @@ async function join() {
     joinButton.disabled = true;
     setStatus('Preparing connection...');
 
+    let connectionData = null;
+
     try {
         if (!isBrowserSupported()) {
             throw new Error('This browser does not support the media features required for the meeting.');
@@ -1483,6 +1485,7 @@ async function join() {
         const tokenPromise = fetchToken(name);
 
         const data = await tokenPromise;
+        connectionData = data;
 
         setStatus('Preparing the realtime connection...');
         await Promise.allSettled([prewarm]);
@@ -1562,8 +1565,8 @@ async function join() {
     } catch (error) {
         console.error('Join failed:', error);
 
-        if (room && typeof data !== 'undefined' && data?.server_url && data?.participant_token) {
-            await runConnectionDiagnostics(data.server_url, data.participant_token);
+        if (connectionData?.server_url && connectionData?.participant_token) {
+            runConnectionDiagnostics(connectionData.server_url, connectionData.participant_token);
         }
 
         if (connectTimeout) {
