@@ -10,8 +10,3 @@ services:
       - "7882:7882/udp"
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecr}"
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
