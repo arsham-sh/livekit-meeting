@@ -265,6 +265,8 @@
             transition: transform .18s ease;
         }
         .tile.screen-share video { object-fit: contain; }
+        /* Keep the presenter's own screen preview slightly soft; remote viewers stay sharp. */
+        .tile.local-screen-share video { filter: blur(1.5px); }
         .avatar {
             width: 96px;
             height: 96px;
@@ -1777,7 +1779,7 @@ function removeVideoForParticipant(participant) {
         }
     }
 
-    tile.classList.remove('screen-share');
+    tile.classList.remove('screen-share', 'local-screen-share');
     tile.classList.add('no-video');
     tile.querySelector('.screen-focus')?.remove();
     if (presentationTrack?.participant === participant) closePresentation();
@@ -1806,6 +1808,7 @@ function renderParticipantVideo(participant) {
         tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
         tile.classList.remove('no-video');
         tile.classList.toggle('screen-share', isScreenShare);
+        tile.classList.toggle('local-screen-share', isScreenShare && participant === room?.localParticipant);
         syncScreenFocusButton(tile, participant, isScreenShare);
         applyParticipantZoom(participant);
         return;
@@ -1830,6 +1833,7 @@ function renderParticipantVideo(participant) {
     tile.insertBefore(element, tile.querySelector('.avatar'));
     tile.classList.remove('no-video');
     tile.classList.toggle('screen-share', isScreenShare);
+    tile.classList.toggle('local-screen-share', isScreenShare && participant === room?.localParticipant);
     syncScreenFocusButton(tile, participant, isScreenShare);
     mediaElements.set(sid, element);
     applyParticipantZoom(participant);
@@ -3046,19 +3050,76 @@ documentAccessToggle.addEventListener('click', () => {
     documentAccess.hidden = !documentAccess.hidden;
     updateDocumentPermissionUi();
 });
+let savedDocumentSelection = null;
+
+function saveDocumentSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    if (documentEditor.contains(range.commonAncestorContainer)) {
+        savedDocumentSelection = range.cloneRange();
+    }
+}
+
+function restoreDocumentSelection() {
+    if (!savedDocumentSelection) return;
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(savedDocumentSelection);
+}
+
+function applyDocumentCommand(command, value = null) {
+    if (!documentCanEdit) return;
+
+    restoreDocumentSelection();
+    documentEditor.focus();
+    restoreDocumentSelection();
+
+    if (['fontName', 'fontSize', 'foreColor', 'hiliteColor'].includes(command)) {
+        document.execCommand('styleWithCSS', false, true);
+    }
+
+    if (command === 'formatBlock' && typeof value === 'string') {
+        value = value.toLowerCase();
+        if (!['p', 'h1', 'h2', 'h3', 'blockquote'].includes(value)) return;
+        value = '<' + value + '>';
+    }
+
+    try {
+        if (typeof document.queryCommandSupported === 'function' &&
+            !document.queryCommandSupported(command)) {
+            return;
+        }
+
+        document.execCommand(command, false, value);
+        saveDocumentSelection();
+        scheduleDocumentSync();
+    } catch (error) {
+        console.warn('Document command failed:', command, error);
+    }
+}
+
 documentEditor.addEventListener('input', scheduleDocumentSync);
+documentEditor.addEventListener('keyup', saveDocumentSelection);
+documentEditor.addEventListener('mouseup', saveDocumentSelection);
+documentEditor.addEventListener('blur', saveDocumentSelection);
 documentEditor.addEventListener('paste', () => {
-    setTimeout(scheduleDocumentSync, 0);
+    setTimeout(() => {
+        saveDocumentSelection();
+        scheduleDocumentSync();
+    }, 0);
 });
+document.addEventListener('selectionchange', saveDocumentSelection);
+
 document.querySelectorAll('[data-doc-command]').forEach(control => {
-    control.addEventListener('mousedown', event => {
-        if (documentCanEdit) event.preventDefault();
+    control.addEventListener('mousedown', () => {
+        if (documentCanEdit) saveDocumentSelection();
     });
 
-    control.addEventListener('click', () => {
-        if (!documentCanEdit) return;
-
-        const command = control.dataset.docCommand;
+    const eventName = control instanceof HTMLSelectElement ? 'change' : 'click';
+    control.addEventListener(eventName, () => {
         let value = control.dataset.docValue || null;
 
         if (control instanceof HTMLInputElement && control.type === 'color') {
@@ -3067,12 +3128,7 @@ document.querySelectorAll('[data-doc-command]').forEach(control => {
             value = control.value;
         }
 
-        documentEditor.focus();
-        if (['fontName', 'fontSize', 'foreColor', 'hiliteColor'].includes(command)) {
-            document.execCommand('styleWithCSS', false, true);
-        }
-        document.execCommand(command, false, value);
-        scheduleDocumentSync();
+        applyDocumentCommand(control.dataset.docCommand, value);
     });
 });
 documentDownload.addEventListener('click', downloadSharedDocument);
