@@ -229,7 +229,10 @@ import {
     Room,
     RoomEvent,
     ConnectionState,
-} from 'https://cdn.jsdelivr.net/npm/livekit-client@2.17.0/+esm';
+    Track,
+    VideoPresets,
+    isBrowserSupported,
+} from 'https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm';
 
 const roomName = @json($room);
 const grid = document.getElementById('grid');
@@ -248,6 +251,7 @@ let room = null;
 let joining = false;
 let leaving = false;
 let audioUnlockNeeded = false;
+let connectTimeout = null;
 
 const mediaElements = new Map();
 
@@ -306,8 +310,8 @@ function getPublication(participant, source) {
 function updateBadge(participant) {
     const tile = tileFor(participant);
     const badge = tile.querySelector('.badge');
-    const micPublication = getPublication(participant, 'microphone');
-    const cameraPublication = getPublication(participant, 'camera');
+    const micPublication = getPublication(participant, Track.Source.Microphone);
+    const cameraPublication = getPublication(participant, Track.Source.Camera);
 
     const parts = [];
     if (micPublication?.isMuted || micPublication?.isEnabled === false) parts.push('Muted');
@@ -436,8 +440,8 @@ function cleanupRoom() {
 function updateButtons() {
     if (!room) return;
 
-    const micPublication = room.localParticipant.getTrackPublication('microphone');
-    const cameraPublication = room.localParticipant.getTrackPublication('camera');
+    const micPublication = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    const cameraPublication = room.localParticipant.getTrackPublication(Track.Source.Camera);
 
     const micOn = !!micPublication && !micPublication.isMuted && micPublication.isEnabled !== false;
     const cameraOn = !!cameraPublication && !cameraPublication.isMuted && cameraPublication.isEnabled !== false;
@@ -646,6 +650,10 @@ async function join() {
     setStatus('Preparing your meeting...');
 
     try {
+        if (!isBrowserSupported()) {
+            throw new Error('This browser does not support the media features required for the meeting.');
+        }
+
         const data = await fetchToken(name);
 
         setStatus('Starting secure connection...');
@@ -654,10 +662,15 @@ async function join() {
             adaptiveStream: true,
             dynacast: true,
             disconnectOnPageLeave: true,
+            singlePeerConnection: true,
             audioCaptureDefaults: {
                 echoCancellation: true,
                 noiseSuppression: true,
                 autoGainControl: true,
+            },
+            videoCaptureDefaults: {
+                resolution: VideoPresets.h720.resolution,
+                facingMode: 'user',
             },
         });
 
@@ -665,11 +678,24 @@ async function join() {
 
         // Pre-warm LiveKit's connection while the browser is still preparing
         // the room. This removes avoidable connection setup latency.
-        room.prepareConnection(data.server_url, data.participant_token);
-
-        await room.connect(data.server_url, data.participant_token, {
-            autoSubscribe: true,
+        room.prepareConnection(data.server_url, data.participant_token).catch(error => {
+            console.warn('LiveKit connection pre-warm failed:', error);
         });
+
+        const connectionPromise = room.connect(data.server_url, data.participant_token, {
+            autoSubscribe: true,
+            maxRetries: 2,
+            websocketTimeout: 10000,
+            peerConnectionTimeout: 12000,
+        });
+
+        connectTimeout = setTimeout(() => {
+            room?.disconnect().catch(() => {});
+        }, 25000);
+
+        await connectionPromise;
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
 
         nameInput.disabled = true;
         joinButton.hidden = true;
@@ -681,6 +707,11 @@ async function join() {
         console.error('Join failed:', error);
 
         cleanupRoom();
+
+        if (connectTimeout) {
+            clearTimeout(connectTimeout);
+            connectTimeout = null;
+        }
 
         if (room) {
             await room.disconnect().catch(() => {});
@@ -705,7 +736,7 @@ async function toggleMicrophone() {
     micButton.disabled = true;
 
     try {
-        const publication = room.localParticipant.getTrackPublication('microphone');
+        const publication = room.localParticipant.getTrackPublication(Track.Source.Microphone);
         const enabled = !!publication && !publication.isMuted && publication.isEnabled !== false;
 
         await room.localParticipant.setMicrophoneEnabled(!enabled, {
@@ -729,7 +760,7 @@ async function toggleCamera() {
     cameraButton.disabled = true;
 
     try {
-        const publication = room.localParticipant.getTrackPublication('camera');
+        const publication = room.localParticipant.getTrackPublication(Track.Source.Camera);
         const enabled = !!publication && !publication.isMuted && publication.isEnabled !== false;
 
         await room.localParticipant.setCameraEnabled(!enabled);
@@ -747,6 +778,11 @@ async function leave() {
 
     leaving = true;
     leaveButton.disabled = true;
+
+    if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+    }
 
     if (room) {
         cleanupRoom();
