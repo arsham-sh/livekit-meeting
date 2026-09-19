@@ -150,15 +150,14 @@
         }
         .tile.screen-share video { object-fit: contain; }
         .avatar {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
+            width: 82px;
+            height: 82px;
+            border-radius: 22px;
+            display: block;
+            object-fit: cover;
             background: #29292f;
-            color: #fff;
-            font-size: 26px;
-            font-weight: 800;
+            box-shadow: 0 10px 30px rgba(0,0,0,.22);
+            user-select: none;
         }
         .name {
             position: absolute;
@@ -1155,6 +1154,12 @@ function initials(name) {
         .join('') || '?';
 }
 
+function blobatarUrl(name, size = 96) {
+    const value = String(name || 'participant').trim() || 'participant';
+    return 'https://blobatar.dev/avatar/' + encodeURIComponent(value) +
+        '?size=' + encodeURIComponent(size) + '&background=circle';
+}
+
 function participantTile(participant) {
     const selector = '[data-identity="' + CSS.escape(participant.identity) + '"]';
     let tile = grid.querySelector(selector);
@@ -1164,8 +1169,14 @@ function participantTile(participant) {
         tile.className = 'tile';
         tile.dataset.identity = participant.identity;
 
-        const avatar = document.createElement('div');
+        const avatar = document.createElement('img');
         avatar.className = 'avatar';
+        avatar.alt = '';
+        avatar.width = 82;
+        avatar.height = 82;
+        avatar.loading = 'lazy';
+        avatar.decoding = 'async';
+        avatar.referrerPolicy = 'no-referrer';
 
         const name = document.createElement('span');
         name.className = 'name';
@@ -1192,7 +1203,18 @@ function participantTile(participant) {
 
     const displayName = participant.name || participant.identity;
     tile.querySelector('.name').textContent = displayName;
-    tile.querySelector('.avatar').textContent = initials(displayName);
+
+    const avatar = tile.querySelector('.avatar');
+    if (avatar) {
+        avatar.alt = displayName;
+        avatar.src = blobatarUrl(displayName);
+        avatar.onerror = () => {
+            avatar.onerror = null;
+            avatar.removeAttribute('src');
+            avatar.alt = initials(displayName);
+            avatar.style.background = '#29292f';
+        };
+    }
     attachTileZoomGesture(tile, participant);
 
     return tile;
