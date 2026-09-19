@@ -566,6 +566,7 @@ import {
     VideoPresets,
     ScreenSharePresets,
     isBrowserSupported,
+    ConnectionCheck,
 } from 'https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm';
 
 const roomName = @json($room);
@@ -1408,6 +1409,45 @@ function setupRoomEvents() {
         });
 }
 
+async function connectRoom(serverUrl, token, relayOnly = false) {
+    if (!room) throw new Error('LiveKit room is not initialized.');
+
+    const connectionOptions = {
+        autoSubscribe: true,
+        maxRetries: 0,
+        websocketTimeout: 10000,
+        peerConnectionTimeout: relayOnly ? 12000 : 7000,
+    };
+
+    if (relayOnly) {
+        connectionOptions.rtcConfig = {
+            iceTransportPolicy: 'relay',
+        };
+    }
+
+    await room.connect(serverUrl, token, connectionOptions);
+}
+
+async function runConnectionDiagnostics(serverUrl, token) {
+    try {
+        const checker = new ConnectionCheck(serverUrl, token, {
+            errorsAsWarnings: true,
+        });
+
+        await Promise.allSettled([
+            checker.checkWebsocket(),
+            checker.checkWebRTC(),
+            checker.checkTURN(),
+        ]);
+
+        const results = checker.getResults();
+        console.warn('LiveKit connection diagnostics:', results);
+        await checker.dispose();
+    } catch (error) {
+        console.warn('LiveKit connection diagnostics failed:', error);
+    }
+}
+
 async function join() {
     if (joining || room) return;
 
@@ -1435,33 +1475,54 @@ async function join() {
         room = roomOptions();
         setupRoomEvents();
 
-        // Start DNS/TLS pre-warming immediately. LiveKit documents this as a
-        // way to reduce connection setup latency, including LiveKit Cloud edge selection.
+        // Pre-warm DNS/TLS and request the token in parallel. Waiting for the
+        // first pre-warm before starting the token request only adds latency.
         const prewarm = room.prepareConnection(livekitUrl).catch(error => {
             console.warn('LiveKit pre-warm failed:', error);
         });
+        const tokenPromise = fetchToken(name);
 
-        const data = await fetchToken(name);
+        const data = await tokenPromise;
 
-        setStatus('Connecting to the meeting...');
+        setStatus('Preparing the realtime connection...');
+        await Promise.allSettled([prewarm]);
 
-        await prewarm;
+        // With LiveKit Cloud, signal/WebSocket connectivity can succeed while
+        // WebRTC ICE fails. Try the normal path first, then immediately retry
+        // through LiveKit's TURN relay instead of waiting through slow region
+        // retries. This is especially important on restrictive/mobile networks.
         await room.prepareConnection(data.server_url, data.participant_token);
 
-        const connectionPromise = room.connect(data.server_url, data.participant_token, {
-            autoSubscribe: true,
-            maxRetries: 3,
-            websocketTimeout: 15000,
-            peerConnectionTimeout: 15000,
-        });
+        let connectionError = null;
+
+        try {
+            await connectRoom(data.server_url, data.participant_token, false);
+        } catch (error) {
+            connectionError = error;
+            console.warn('Direct WebRTC connection failed; retrying through TURN:', error);
+
+            const failedRoom = room;
+            room = null;
+            await failedRoom?.disconnect().catch(() => {});
+
+            room = roomOptions();
+            setupRoomEvents();
+
+            setStatus('Network is restricting direct media. Switching to secure relay...');
+
+            await room.prepareConnection(data.server_url, data.participant_token);
+            await connectRoom(data.server_url, data.participant_token, true);
+        }
+
+        if (connectionError) {
+            console.info('TURN fallback succeeded after direct connection failure.');
+        }
 
         connectTimeout = setTimeout(() => {
             if (room && room.state !== ConnectionState.Connected) {
                 room.disconnect().catch(() => {});
             }
-        }, 30000);
-
-        await connectionPromise;
+        }, 20000);
 
         clearTimeout(connectTimeout);
         connectTimeout = null;
@@ -1500,6 +1561,10 @@ async function join() {
         }
     } catch (error) {
         console.error('Join failed:', error);
+
+        if (room && typeof data !== 'undefined' && data?.server_url && data?.participant_token) {
+            await runConnectionDiagnostics(data.server_url, data.participant_token);
+        }
 
         if (connectTimeout) {
             clearTimeout(connectTimeout);
