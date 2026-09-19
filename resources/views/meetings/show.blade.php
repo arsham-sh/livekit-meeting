@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Meeting {{ $room }}</title>
     <style>
@@ -15,102 +15,110 @@
             --muted: #a1a1aa;
             --danger: #ef4444;
             --accent: #fafafa;
+            --border: #27272d;
         }
 
         * { box-sizing: border-box; }
-        html, body { min-height: 100%; }
-
+        html, body { width: 100%; min-height: 100%; margin: 0; }
         body {
-            margin: 0;
+            min-height: 100dvh;
+            overflow: hidden;
             background: var(--bg);
             color: var(--text);
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         button, input { font: inherit; }
-
         button {
             border: 0;
             border-radius: 10px;
-            padding: 10px 14px;
+            min-height: 42px;
+            padding: 9px 13px;
             cursor: pointer;
             font-weight: 700;
             background: var(--panel-2);
             color: var(--text);
             transition: opacity .15s ease, transform .05s ease;
+            touch-action: manipulation;
         }
-
         button:active { transform: translateY(1px); }
         button:hover { filter: brightness(1.12); }
         button:disabled { cursor: wait; opacity: .55; }
-
         input {
             width: min(240px, 60vw);
-            border: 1px solid #2b2b31;
+            min-height: 42px;
+            border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 9px 12px;
             background: var(--panel);
             color: var(--text);
             outline: none;
         }
-
         input:focus { border-color: #666; }
 
         header {
-            display: flex;
+            position: fixed;
+            inset: 0 0 auto;
+            z-index: 40;
+            display: grid;
+            grid-template-columns: auto minmax(150px, 240px) auto;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
-            padding: 14px 16px;
+            padding: 10px 14px;
+            padding-top: max(10px, env(safe-area-inset-top));
             border-bottom: 1px solid #1f1f23;
-            background: #0d0d0f;
-            position: sticky;
-            top: 0;
-            z-index: 20;
+            background: #0d0d0fee;
+            backdrop-filter: blur(12px);
         }
-
-        .room { font-weight: 800; margin-right: auto; }
-
+        .room {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 800;
+        }
         .status {
-            width: 100%;
+            grid-column: 1 / -1;
+            min-height: 18px;
             color: var(--muted);
-            font-size: 14px;
-            min-height: 20px;
+            font-size: 13px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
-
         .status.error { color: #f87171; }
         .status.good { color: #86efac; }
 
         #grid {
+            position: fixed;
+            inset: 91px 0 0;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-            grid-auto-rows: minmax(150px, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(min(300px, 32vw), 1fr));
+            grid-auto-rows: minmax(170px, 1fr);
             align-content: start;
             gap: 10px;
-            padding: 12px;
-            height: calc(100vh - 75px);
+            padding: 10px 10px 104px;
             overflow-y: auto;
+            overflow-x: hidden;
             overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
         }
-
         #grid.compact {
-            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-            grid-auto-rows: minmax(130px, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(min(240px, 28vw), 1fr));
+            grid-auto-rows: minmax(135px, 1fr);
         }
-
         #grid.dense {
-            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(190px, 24vw), 1fr));
             grid-auto-rows: minmax(110px, 1fr);
             gap: 6px;
         }
-
-        [hidden] {
-            display: none !important;
-        }
+        [hidden] { display: none !important; }
 
         .tile {
             position: relative;
-            min-height: 220px;
+            min-width: 0;
+            min-height: 0;
             aspect-ratio: 16 / 10;
             background: var(--panel);
             border-radius: 14px;
@@ -120,7 +128,6 @@
             border: 1px solid #222228;
             contain: layout paint;
         }
-
         .tile video {
             display: block;
             width: 100%;
@@ -128,19 +135,18 @@
             object-fit: cover;
             background: #050505;
         }
-
+        .tile.screen-share video { object-fit: contain; }
         .avatar {
-            width: 72px;
-            height: 72px;
+            width: 68px;
+            height: 68px;
             border-radius: 50%;
             display: grid;
             place-items: center;
             background: #29292f;
             color: #fff;
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 800;
         }
-
         .name {
             position: absolute;
             z-index: 3;
@@ -155,7 +161,6 @@
             border-radius: 8px;
             font-size: 13px;
         }
-
         .badge {
             position: absolute;
             z-index: 3;
@@ -167,11 +172,7 @@
             font-size: 12px;
             color: #d4d4d8;
         }
-
-        .speaking {
-            outline: 2px solid #fff;
-            outline-offset: -2px;
-        }
+        .speaking { outline: 2px solid #fff; outline-offset: -2px; }
 
         #audio-root {
             position: fixed;
@@ -184,43 +185,48 @@
 
         .controls {
             position: fixed;
-            z-index: 30;
-            bottom: 18px;
+            z-index: 50;
             left: 50%;
+            bottom: max(12px, env(safe-area-inset-bottom));
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
-            padding: 10px;
-            background: #17171bcc;
+            align-items: center;
+            gap: 7px;
+            max-width: calc(100vw - 20px);
+            padding: 8px;
+            background: #17171be8;
             border: 1px solid #303038;
             border-radius: 16px;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 10px 35px #0008;
         }
-
+        .controls button { white-space: nowrap; }
         #leave { background: var(--danger); color: #fff; }
         #join { background: var(--accent); color: #111; }
-
         .quality {
-            font-size: 12px;
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 11px;
             color: var(--muted);
-            margin-left: 4px;
-            align-self: center;
+            padding: 0 3px;
         }
 
         .chat-toggle {
             position: fixed;
-            z-index: 35;
-            right: 18px;
-            bottom: 18px;
-            width: 48px;
-            height: 48px;
+            z-index: 55;
+            right: 16px;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            width: 50px;
+            height: 50px;
+            min-height: 50px;
             padding: 0;
             border-radius: 50%;
             background: var(--accent);
             color: #111;
             box-shadow: 0 8px 30px #0008;
         }
-
         .chat-unread {
             position: absolute;
             top: -3px;
@@ -235,49 +241,46 @@
             display: grid;
             place-items: center;
         }
-
         .chat-panel {
             position: fixed;
-            z-index: 34;
-            right: 18px;
+            z-index: 54;
+            right: 16px;
             bottom: 78px;
             width: min(360px, calc(100vw - 24px));
-            height: min(520px, calc(100vh - 110px));
+            height: min(520px, calc(100dvh - 110px));
             display: flex;
             flex-direction: column;
-            background: #111114f5;
+            background: #111114f7;
             border: 1px solid #303038;
             border-radius: 16px;
             backdrop-filter: blur(16px);
             box-shadow: 0 18px 60px #0009;
             overflow: hidden;
         }
-
         .chat-header {
+            position: static;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            padding: 12px 14px;
+            padding: 10px 12px;
+            border: 0;
             border-bottom: 1px solid #2a2a30;
+            background: transparent;
+            backdrop-filter: none;
             font-weight: 800;
         }
-
-        .chat-header button {
-            padding: 6px 9px;
-            border-radius: 8px;
-        }
-
+        .chat-header button { min-height: 34px; padding: 5px 9px; }
         .chat-messages {
             flex: 1;
             min-height: 0;
             overflow-y: auto;
-            padding: 12px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            -webkit-overflow-scrolling: touch;
         }
-
         .chat-empty {
             margin: auto;
             color: var(--muted);
@@ -285,7 +288,6 @@
             font-size: 13px;
             line-height: 1.5;
         }
-
         .chat-message {
             max-width: 85%;
             align-self: flex-start;
@@ -294,80 +296,96 @@
             background: var(--panel-2);
             overflow-wrap: anywhere;
         }
-
         .chat-message.mine {
             align-self: flex-end;
             background: #f4f4f5;
             color: #111;
             border-radius: 12px 12px 4px 12px;
         }
-
-        .chat-author {
-            font-size: 11px;
-            font-weight: 800;
-            opacity: .7;
-            margin-bottom: 3px;
-        }
-
-        .chat-body {
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-
-        .chat-time {
-            margin-top: 4px;
-            font-size: 10px;
-            opacity: .55;
-            text-align: right;
-        }
-
+        .chat-author { font-size: 11px; font-weight: 800; opacity: .7; margin-bottom: 3px; }
+        .chat-body { white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.4; }
+        .chat-time { margin-top: 4px; font-size: 10px; opacity: .55; text-align: right; }
         .chat-form {
             display: flex;
             gap: 7px;
-            padding: 10px;
+            padding: 9px;
             border-top: 1px solid #2a2a30;
         }
+        .chat-form input { flex: 1; width: auto; min-width: 0; }
+        .chat-form button { flex: 0 0 auto; }
 
-        .chat-form input {
-            flex: 1;
-            width: auto;
-            min-width: 0;
-        }
-
-        .chat-form button {
-            flex: 0 0 auto;
-        }
-
-        @media (max-width: 640px) {
-            header { padding: 10px; }
-            .room { width: 100%; }
-            input { width: 100%; }
+        @media (max-width: 760px) {
+            body { overflow: hidden; }
+            header {
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 7px;
+                padding: 8px 10px;
+                padding-top: max(8px, env(safe-area-inset-top));
+            }
+            .room { grid-column: 1 / -1; }
+            header input { min-width: 0; width: 100%; }
+            .status { font-size: 12px; }
             #grid {
-                grid-template-columns: 1fr;
-                grid-auto-rows: minmax(210px, auto);
-                height: calc(100vh - 62px);
-                padding: 8px 8px 100px;
+                inset: 94px 0 0;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: auto;
+                gap: 7px;
+                padding: 7px 7px 100px;
             }
-            .tile { min-height: 210px; }
+            #grid.compact,
+            #grid.dense {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: auto;
+                gap: 7px;
+            }
+            .tile {
+                width: 100%;
+                min-height: 0;
+                aspect-ratio: 16 / 10;
+                border-radius: 10px;
+            }
+            .avatar { width: 48px; height: 48px; font-size: 19px; }
+            .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 4px 6px; font-size: 11px; }
+            .badge { right: 6px; top: 6px; padding: 4px 6px; font-size: 10px; }
             .controls {
-                bottom: 10px;
-                width: calc(100% - 20px);
-                justify-content: center;
+                left: 10px;
+                right: 10px;
+                bottom: max(8px, env(safe-area-inset-bottom));
+                width: auto;
+                max-width: none;
+                transform: none;
+                overflow-x: auto;
+                justify-content: flex-start;
+                scrollbar-width: none;
             }
-            .controls button { flex: 1; min-width: 0; }
-            .controls { overflow-x: auto; }
+            .controls::-webkit-scrollbar { display: none; }
+            .controls button { flex: 1 0 auto; min-width: 78px; }
+            .quality { display: none; }
             .chat-toggle {
-                right: 12px;
-                bottom: 78px;
+                right: 10px;
+                bottom: calc(76px + env(safe-area-inset-bottom));
+                width: 46px;
+                height: 46px;
+                min-height: 46px;
             }
             .chat-panel {
-                right: 12px;
-                bottom: 132px;
-                width: calc(100vw - 24px);
-                height: min(55vh, 460px);
+                right: 8px;
+                bottom: calc(132px + env(safe-area-inset-bottom));
+                width: calc(100vw - 16px);
+                height: min(62dvh, 500px);
+                border-radius: 14px;
             }
+        }
+
+        @media (max-width: 420px) {
+            #grid {
+                grid-template-columns: 1fr;
+            }
+            #grid.compact,
+            #grid.dense {
+                grid-template-columns: 1fr;
+            }
+            .tile { aspect-ratio: 16 / 9; }
         }
     </style>
 </head>
@@ -421,6 +439,7 @@ import {
 } from 'https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm';
 
 const roomName = @json($room);
+const livekitUrl = @json($livekitUrl);
 const grid = document.getElementById('grid');
 const audioRoot = document.getElementById('audio-root');
 const nameInput = document.getElementById('name');
@@ -450,6 +469,8 @@ let audioUnlockNeeded = false;
 let connectTimeout = null;
 let chatOpen = false;
 let unreadMessages = 0;
+let lastJoinAttempt = 0;
+let reconnecting = false;
 
 const mediaElements = new Map();
 
@@ -513,8 +534,7 @@ function appendChatMessage({ name, text, mine = false, timestamp = Date.now() })
 
 async function sendChatMessage(event) {
     event.preventDefault();
-
-    if (!room || leaving) return;
+    if (!room || leaving || room.state !== ConnectionState.Connected) return;
 
     const text = chatInput.value.trim();
     if (!text) return;
@@ -530,10 +550,7 @@ async function sendChatMessage(event) {
 
         await room.localParticipant.publishData(
             new TextEncoder().encode(JSON.stringify(payload)),
-            {
-                reliable: true,
-                topic: 'chat',
-            },
+            { reliable: true, topic: 'chat' },
         );
 
         appendChatMessage({
@@ -557,16 +574,13 @@ function handleChatData(payload, participant, topic) {
     if (topic !== 'chat' || !participant) return;
 
     try {
-        const decoded = new TextDecoder().decode(payload);
-        const message = JSON.parse(decoded);
+        const message = JSON.parse(new TextDecoder().decode(payload));
 
         if (
             message?.type !== 'chat' ||
             typeof message.text !== 'string' ||
             !message.text.trim()
-        ) {
-            return;
-        }
+        ) return;
 
         appendChatMessage({
             name: participant.name || participant.identity,
@@ -588,48 +602,14 @@ function initials(name) {
         .join('') || '?';
 }
 
-function identityKey(participant) {
-    return participant.identity;
-}
-
-function tileKeyFor(participant, source = Track.Source.Camera) {
-    return identityKey(participant) + ':' + source;
-}
-
-function updateGridDensity() {
-    const count = grid.querySelectorAll('.tile[data-source="' + CSS.escape(Track.Source.Camera) + '"]').length;
-
-    grid.classList.toggle('dense', count >= 13);
-    grid.classList.toggle('compact', count >= 7 && count < 13);
-}
-
-function removeDuplicateTiles(participant, source) {
-    const key = tileKeyFor(participant, source);
-    const tiles = [...grid.querySelectorAll('[data-tile-key="' + CSS.escape(key) + '"]')];
-
-    if (tiles.length <= 1) return tiles[0] || null;
-
-    const primary = tiles.find(tile => tile.querySelector('video')) || tiles[0];
-
-    tiles.forEach(tile => {
-        if (tile !== primary) tile.remove();
-    });
-
-    return primary;
-}
-
-function tileFor(participant, source = Track.Source.Camera) {
-    const identity = identityKey(participant);
-    const tileKey = `${identity}:${source}`;
-    const selector = `[data-tile-key="${CSS.escape(tileKey)}"]`;
+function participantTile(participant) {
+    const selector = '[data-identity="' + CSS.escape(participant.identity) + '"]';
     let tile = grid.querySelector(selector);
 
     if (!tile) {
         tile = document.createElement('div');
         tile.className = 'tile';
-        tile.dataset.identity = identity;
-        tile.dataset.source = source;
-        tile.dataset.tileKey = tileKey;
+        tile.dataset.identity = participant.identity;
 
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
@@ -644,92 +624,82 @@ function tileFor(participant, source = Track.Source.Camera) {
         grid.appendChild(tile);
     }
 
-    tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
-
-    tile.querySelector('.name').textContent = participant.name || participant.identity;
-    tile.querySelector('.avatar').textContent = initials(participant.name || participant.identity);
-
-    removeDuplicateTiles(participant, source);
-    updateGridDensity();
+    const displayName = participant.name || participant.identity;
+    tile.querySelector('.name').textContent = displayName;
+    tile.querySelector('.avatar').textContent = initials(displayName);
 
     return tile;
 }
 
-function getPublication(participant, source) {
-    return participant.getTrackPublication(source);
+function updateGridDensity() {
+    const count = grid.querySelectorAll('.tile').length;
+    grid.classList.toggle('dense', count >= 13);
+    grid.classList.toggle('compact', count >= 7 && count < 13);
 }
 
 function updateBadge(participant) {
-    const tile = tileFor(participant);
-    const badge = tile.querySelector('.badge');
-    const micPublication = getPublication(participant, Track.Source.Microphone);
-    const cameraPublication = getPublication(participant, Track.Source.Camera);
-
+    const tile = participantTile(participant);
+    const micPublication = participant.getTrackPublication(Track.Source.Microphone);
+    const cameraPublication = participant.getTrackPublication(Track.Source.Camera);
     const parts = [];
+
     if (micPublication?.isMuted || micPublication?.isEnabled === false) parts.push('Muted');
     if (cameraPublication?.isMuted || cameraPublication?.isEnabled === false) parts.push('Camera off');
 
-    badge.textContent = parts.join(' · ');
-    badge.hidden = parts.length === 0;
+    tile.querySelector('.badge').textContent = parts.join(' · ');
+    tile.querySelector('.badge').hidden = parts.length === 0;
 }
 
-function detachTrack(track) {
-    if (!track) return;
+function currentVideoPublication(participant) {
+    const screen = participant.getTrackPublication(Track.Source.ScreenShare);
+    if (screen?.track) return screen;
 
-    track.detach().forEach(element => element.remove());
+    const camera = participant.getTrackPublication(Track.Source.Camera);
+    if (camera?.track) return camera;
 
-    if (track.sid) {
-        mediaElements.delete(track.sid);
-    }
+    return null;
+}
 
-    const source = track.source;
-    const participant = track.participant;
-    if (source === Track.Source.ScreenShare && participant) {
-        const key = `${participant.identity}:${Track.Source.ScreenShare}`;
-        const tile = grid.querySelector(`[data-tile-key="${CSS.escape(key)}"]`);
-        if (tile && !tile.querySelector('video')) {
-            tile.remove();
+function removeVideoForParticipant(participant) {
+    const tile = participantTile(participant);
+    tile.querySelectorAll('video').forEach(element => element.remove());
+
+    for (const [sid, element] of mediaElements.entries()) {
+        if (element.tagName === 'VIDEO' && element.dataset.identity === participant.identity) {
+            element.remove();
+            mediaElements.delete(sid);
         }
     }
+
+    tile.classList.remove('screen-share');
 }
 
-function removeParticipant(participant) {
-    participant.trackPublications.forEach(publication => {
-        if (publication.track) detachTrack(publication.track);
-    });
+function renderParticipantVideo(participant) {
+    const publication = currentVideoPublication(participant);
+    const tile = participantTile(participant);
 
-    grid.querySelectorAll(`[data-identity="${CSS.escape(participant.identity)}"]`).forEach(tile => tile.remove());
-}
+    if (!publication?.track) {
+        removeVideoForParticipant(participant);
+        updateGridDensity();
+        return;
+    }
 
-function attachVideoTrack(track, participant, publication) {
-    const source = publication.source || track.source || Track.Source.Camera;
+    const track = publication.track;
     const sid = publication.trackSid || track.sid;
-
     if (!sid) return;
 
-    const tile = tileFor(participant, source);
-    const existingElement = mediaElements.get(sid);
+    const source = publication.source || track.source || Track.Source.Camera;
+    const existing = tile.querySelector('video');
 
-    if (existingElement) {
-        existingElement.remove();
-        mediaElements.delete(sid);
+    if (existing?.dataset.trackSid === sid) {
+        tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
+        return;
     }
 
-    const existingVideo = tile.querySelector('video');
-
-    if (existingVideo) {
-        const existingSid = existingVideo.dataset.trackSid;
-
-        if (existingSid === sid) {
-            mediaElements.set(sid, existingVideo);
-            return;
-        }
-
-        existingVideo.remove();
-
-        if (existingSid) {
-            mediaElements.delete(existingSid);
-        }
+    if (existing) {
+        const oldSid = existing.dataset.trackSid;
+        existing.remove();
+        if (oldSid) mediaElements.delete(oldSid);
     }
 
     const element = track.attach();
@@ -737,20 +707,34 @@ function attachVideoTrack(track, participant, publication) {
     element.playsInline = true;
     element.muted = participant === room?.localParticipant;
     element.dataset.trackSid = sid;
+    element.dataset.identity = participant.identity;
     element.dataset.source = source;
 
     tile.insertBefore(element, tile.querySelector('.avatar'));
+    tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
     mediaElements.set(sid, element);
-
-    removeDuplicateTiles(participant, source);
     updateGridDensity();
+}
+
+function detachTrack(track) {
+    if (!track) return;
+
+    const sid = track.sid;
+    track.detach().forEach(element => element.remove());
+
+    if (sid) mediaElements.delete(sid);
+
+    const participant = track.participant;
+    if (participant && track.kind === 'video') {
+        renderParticipantVideo(participant);
+    }
 }
 
 function attachRemoteAudio(track, participant, publication) {
     if (participant === room?.localParticipant) return;
 
-    const sid = publication.trackSid || track.sid;
-    if (mediaElements.has(sid)) return;
+    const sid = publication?.trackSid || track.sid;
+    if (!sid || mediaElements.has(sid)) return;
 
     const element = track.attach();
     element.autoplay = true;
@@ -762,7 +746,7 @@ function attachRemoteAudio(track, participant, publication) {
 
     element.play().catch(() => {
         audioUnlockNeeded = true;
-        setStatus('Connected. Click anywhere to enable remote audio.');
+        setStatus('Connected. Tap the page once to enable remote audio.');
     });
 }
 
@@ -770,7 +754,7 @@ function attachTrack(track, participant, publication) {
     if (!track) return;
 
     if (track.kind === 'video') {
-        attachVideoTrack(track, participant, publication);
+        renderParticipantVideo(participant);
     } else if (track.kind === 'audio') {
         attachRemoteAudio(track, participant, publication);
     }
@@ -778,61 +762,42 @@ function attachTrack(track, participant, publication) {
     updateBadge(participant);
 }
 
-function renderParticipant(participant) {
-    tileFor(participant, Track.Source.Camera);
-
+function removeParticipant(participant) {
     participant.trackPublications.forEach(publication => {
-        if (publication.track) {
-            attachTrack(publication.track, participant, publication);
-        } else if (publication.source === Track.Source.ScreenShare) {
-            tileFor(participant, publication.source);
+        if (publication.track) detachTrack(publication.track);
+    });
+
+    grid.querySelectorAll('[data-identity="' + CSS.escape(participant.identity) + '"]').forEach(tile => tile.remove());
+
+    for (const [sid, element] of mediaElements.entries()) {
+        if (element.dataset.identity === participant.identity) {
+            element.remove();
+            mediaElements.delete(sid);
         }
-    });
-
-    updateBadge(participant);
-}
-
-function reconcileParticipantTiles(participant) {
-    const expected = new Set([tileKeyFor(participant, Track.Source.Camera)]);
-
-    participant.trackPublications.forEach(publication => {
-        if (
-            publication.source === Track.Source.Camera ||
-            publication.source === Track.Source.ScreenShare
-        ) {
-            expected.add(tileKeyFor(participant, publication.source));
-        }
-    });
-
-    grid.querySelectorAll('[data-identity="' + CSS.escape(participant.identity) + '"]').forEach(tile => {
-        if (!expected.has(tile.dataset.tileKey)) {
-            tile.remove();
-        }
-    });
-
-    participant.trackPublications.forEach(publication => {
-        if (publication.track) {
-            attachTrack(publication.track, participant, publication);
-        }
-    });
-
-    expected.forEach(key => {
-        const source = key.slice(participant.identity.length + 1);
-        removeDuplicateTiles(participant, source);
-    });
+    }
 
     updateGridDensity();
+}
+
+function renderParticipant(participant) {
+    participantTile(participant);
+
+    participant.trackPublications.forEach(publication => {
+        if (publication.track) attachTrack(publication.track, participant, publication);
+    });
+
+    renderParticipantVideo(participant);
+    updateBadge(participant);
 }
 
 function renderAllParticipants() {
     if (!room) return;
 
+    participantTile(room.localParticipant);
     renderParticipant(room.localParticipant);
+
     room.remoteParticipants.forEach(renderParticipant);
-
-    reconcileParticipantTiles(room.localParticipant);
-    room.remoteParticipants.forEach(reconcileParticipantTiles);
-
+    updateGridDensity();
     updateButtons();
 }
 
@@ -846,12 +811,12 @@ function cleanupRoom() {
     if (!room) return;
 
     room.localParticipant.trackPublications.forEach(publication => {
-        if (publication.track) detachTrack(publication.track);
+        if (publication.track) publication.track.detach();
     });
 
     room.remoteParticipants.forEach(participant => {
         participant.trackPublications.forEach(publication => {
-            if (publication.track) detachTrack(publication.track);
+            if (publication.track) publication.track.detach();
         });
     });
 
@@ -861,13 +826,13 @@ function cleanupRoom() {
 function updateButtons() {
     if (!room) return;
 
-    const micPublication = room.localParticipant.getTrackPublication(Track.Source.Microphone);
-    const cameraPublication = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    const camera = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    const screen = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
 
-    const micOn = !!micPublication && !micPublication.isMuted && micPublication.isEnabled !== false;
-    const cameraOn = !!cameraPublication && !cameraPublication.isMuted && cameraPublication.isEnabled !== false;
-    const screenPublication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
-    const screenOn = !!screenPublication && !screenPublication.isMuted && screenPublication.isEnabled !== false;
+    const micOn = !!mic && !mic.isMuted && mic.isEnabled !== false;
+    const cameraOn = !!camera && !camera.isMuted && camera.isEnabled !== false;
+    const screenOn = !!screen && !screen.isMuted && screen.isEnabled !== false;
 
     micButton.textContent = micOn ? 'Mute' : 'Unmute';
     cameraButton.textContent = cameraOn ? 'Camera off' : 'Camera on';
@@ -883,12 +848,13 @@ async function unlockAudio() {
         if (typeof room.startAudio === 'function') {
             await room.startAudio();
         } else {
-            const elements = audioRoot.querySelectorAll('audio');
-            await Promise.all([...elements].map(element => element.play().catch(() => {})));
+            await Promise.all(
+                [...audioRoot.querySelectorAll('audio')].map(element => element.play().catch(() => {})),
+            );
         }
 
         audioUnlockNeeded = false;
-        setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
+        setStatus('Connected as ' + nameInput.value.trim(), 'good');
     } catch (error) {
         console.warn('Audio unlock failed:', error);
     }
@@ -896,10 +862,10 @@ async function unlockAudio() {
 
 async function fetchToken(name) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     try {
-        const response = await fetch(`/meetings/${encodeURIComponent(roomName)}/token`, {
+        const response = await fetch('/meetings/' + encodeURIComponent(roomName) + '/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -908,11 +874,12 @@ async function fetchToken(name) {
             },
             body: JSON.stringify({ name }),
             signal: controller.signal,
+            cache: 'no-store',
         });
 
         if (!response.ok) {
             const body = await response.text();
-            throw new Error(`Token request failed (${response.status}): ${body}`);
+            throw new Error('Token request failed (' + response.status + '): ' + body);
         }
 
         const data = await response.json();
@@ -926,11 +893,38 @@ async function fetchToken(name) {
         if (error.name === 'AbortError') {
             throw new Error('The server took too long to create the meeting token.');
         }
-
         throw error;
     } finally {
         clearTimeout(timeout);
     }
+}
+
+function isMobile() {
+    return window.matchMedia('(max-width: 760px)').matches ||
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function roomOptions() {
+    const mobile = isMobile();
+
+    return new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        disconnectOnPageLeave: true,
+        singlePeerConnection: true,
+        audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+        },
+        videoCaptureDefaults: {
+            resolution: (mobile ? VideoPresets.h360 : VideoPresets.h720).resolution,
+            facingMode: 'user',
+        },
+        publishDefaults: {
+            simulcast: true,
+        },
+    });
 }
 
 function setupRoomEvents() {
@@ -940,155 +934,123 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
-            reconcileParticipantTiles(participant);
+            renderParticipantVideo(participant);
         })
-        .on(RoomEvent.TrackUnsubscribed, (track) => {
+        .on(RoomEvent.TrackUnsubscribed, track => {
             detachTrack(track);
         })
         .on(RoomEvent.TrackPublished, (publication, participant) => {
-            tileFor(participant, publication.source || Track.Source.Camera);
+            participantTile(participant);
             updateBadge(participant);
         })
         .on(RoomEvent.TrackUnpublished, (publication, participant) => {
             if (publication.track) detachTrack(publication.track);
-            if (publication.source === Track.Source.ScreenShare) {
-                grid.querySelector(`[data-tile-key="${CSS.escape(participant.identity + ':' + Track.Source.ScreenShare)}"]`)?.remove();
-            }
-            updateBadge(participant);
+            if (participant) renderParticipantVideo(participant);
+            if (participant) updateBadge(participant);
         })
         .on(RoomEvent.ParticipantConnected, participant => {
             renderParticipant(participant);
-            reconcileParticipantTiles(participant);
-        })
-        .on(RoomEvent.ParticipantDisconnected, participant => {
-            removeParticipant(participant);
             updateGridDensity();
         })
+        .on(RoomEvent.ParticipantDisconnected, removeParticipant)
         .on(RoomEvent.LocalTrackPublished, publication => {
-            if (publication.track) {
-                attachTrack(publication.track, room.localParticipant, publication);
-            }
+            if (publication.track) attachTrack(publication.track, room.localParticipant, publication);
+            renderParticipantVideo(room.localParticipant);
             updateButtons();
         })
         .on(RoomEvent.LocalTrackUnpublished, publication => {
             if (publication.track) detachTrack(publication.track);
-            if (publication.source === Track.Source.ScreenShare) {
-                grid.querySelector(`[data-tile-key="${CSS.escape(room.localParticipant.identity + ':' + Track.Source.ScreenShare)}"]`)?.remove();
-            }
+            renderParticipantVideo(room.localParticipant);
             updateButtons();
         })
         .on(RoomEvent.TrackMuted, (publication, participant) => {
-            updateBadge(participant);
+            if (participant) updateBadge(participant);
             if (participant === room?.localParticipant) updateButtons();
         })
         .on(RoomEvent.TrackUnmuted, (publication, participant) => {
-            updateBadge(participant);
+            if (participant) updateBadge(participant);
             if (participant === room?.localParticipant) updateButtons();
         })
         .on(RoomEvent.ActiveSpeakersChanged, speakers => {
-            document.querySelectorAll('.tile').forEach(tile => {
-                tile.classList.remove('speaking');
-            });
-
+            grid.querySelectorAll('.tile').forEach(tile => tile.classList.remove('speaking'));
             speakers.forEach(participant => {
-                grid.querySelector(`[data-identity="${CSS.escape(participant.identity)}"]`)
+                grid.querySelector('[data-identity="' + CSS.escape(participant.identity) + '"]')
                     ?.classList.add('speaking');
             });
         })
         .on(RoomEvent.ConnectionQualityChanged, (connectionQuality, participant) => {
             if (participant === room?.localParticipant) {
-                quality.textContent = `Connection: ${connectionQuality}`;
+                quality.textContent = 'Connection: ' + connectionQuality;
             }
         })
         .on(RoomEvent.AudioPlaybackStatusChanged, () => {
             if (room && !room.canPlaybackAudio) {
                 audioUnlockNeeded = true;
-                setStatus('Connected. Click anywhere to enable remote audio.');
+                setStatus('Connected. Tap the page once to enable remote audio.');
             }
         })
         .on(RoomEvent.MediaDevicesError, error => {
             console.warn('Media device error:', error);
-            setStatus('A camera or microphone device could not be opened. Check browser permissions and device access.', 'error');
+            setStatus('Camera or microphone is unavailable. Check browser permissions.', 'error');
         })
         .on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant, reason) => {
-            console.warn('Track subscription failed:', trackSid, participant.identity, reason);
-            setStatus(`Could not load media from ${participant.name || participant.identity}.`, 'error');
+            console.warn('Track subscription failed:', trackSid, participant?.identity, reason);
+            if (participant) {
+                setStatus('A participant video could not be loaded. Reconnecting media...', 'error');
+            }
         })
         .on(RoomEvent.ConnectionStateChanged, state => {
             if (state === ConnectionState.Connected) {
-                setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
-            } else if (state === ConnectionState.SignalReconnecting) {
-                setStatus('Signaling interrupted. Reconnecting...');
-            } else if (state === ConnectionState.Reconnecting) {
-                setStatus('Media connection interrupted. Reconnecting...');
+                reconnecting = false;
+                setStatus('Connected as ' + nameInput.value.trim(), 'good');
+                renderAllParticipants();
+            } else if (state === ConnectionState.SignalReconnecting || state === ConnectionState.Reconnecting) {
+                reconnecting = true;
+                setStatus('Connection interrupted. Reconnecting...');
             } else if (state === ConnectionState.Disconnected && !leaving) {
-                setStatus('Disconnected from the meeting.', 'error');
+                reconnecting = false;
+                setStatus('Disconnected from the meeting. Press Join to reconnect.', 'error');
                 controls.hidden = true;
                 chatToggle.hidden = true;
                 setChatOpen(false);
                 joinButton.hidden = false;
                 joinButton.disabled = false;
                 nameInput.disabled = false;
+                room = null;
+                clearMedia();
             }
         })
         .on(RoomEvent.Reconnecting, () => {
+            reconnecting = true;
             setStatus('Connection interrupted. Reconnecting...');
         })
         .on(RoomEvent.Reconnected, () => {
+            reconnecting = false;
             setStatus('Connection restored.', 'good');
             renderAllParticipants();
         })
         .on(RoomEvent.ParticipantMetadataChanged, (_metadata, participant) => {
-            if (participant) {
-                renderParticipant(participant);
-                updateBadge(participant);
-            }
+            if (participant) renderParticipant(participant);
         })
         .on(RoomEvent.ParticipantNameChanged, (_name, participant) => {
             if (participant) renderParticipant(participant);
         })
         .on(RoomEvent.TrackStreamStateChanged, (publication, _streamState, participant) => {
-            if (participant) updateBadge(participant);
+            if (participant) renderParticipantVideo(participant);
         })
         .on(RoomEvent.Disconnected, reason => {
-            if (!leaving) {
-                console.warn('LiveKit disconnected:', reason);
-                setStatus('Disconnected from the meeting.', 'error');
-            }
+            if (!leaving) console.warn('LiveKit disconnected:', reason);
         });
-}
-
-async function requestMedia() {
-    const results = await Promise.allSettled([
-        room.localParticipant.setMicrophoneEnabled(true, {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-        }),
-        room.localParticipant.setCameraEnabled(true),
-    ]);
-
-    const microphoneError = results[0].status === 'rejected' ? results[0].reason : null;
-    const cameraError = results[1].status === 'rejected' ? results[1].reason : null;
-
-    updateButtons();
-
-    if (microphoneError && cameraError) {
-        setStatus('Connected, but camera and microphone are unavailable. Check browser permissions.', 'error');
-    } else if (microphoneError) {
-        setStatus('Connected. Microphone is unavailable. Camera is active.', 'error');
-    } else if (cameraError) {
-        setStatus('Connected. Camera is unavailable. Microphone is active.', 'error');
-    } else {
-        setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
-    }
 }
 
 async function join() {
     if (joining || room) return;
 
-    const name = nameInput.value.trim();
+    const now = Date.now();
+    if (now - lastJoinAttempt < 1200) return;
+    lastJoinAttempt = now;
 
+    const name = nameInput.value.trim();
     if (!name) {
         nameInput.focus();
         setStatus('Enter your name first.', 'error');
@@ -1096,54 +1058,46 @@ async function join() {
     }
 
     joining = true;
+    leaving = false;
     joinButton.disabled = true;
-    setStatus('Preparing your meeting...');
+    setStatus('Preparing connection...');
 
     try {
         if (!isBrowserSupported()) {
             throw new Error('This browser does not support the media features required for the meeting.');
         }
 
-        const data = await fetchToken(name);
-
-        setStatus('Starting secure connection...');
-
-        room = new Room({
-            adaptiveStream: true,
-            dynacast: true,
-            disconnectOnPageLeave: true,
-            singlePeerConnection: true,
-            audioCaptureDefaults: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-            },
-            videoCaptureDefaults: {
-                resolution: VideoPresets.h720.resolution,
-                facingMode: 'user',
-            },
-        });
-
+        room = roomOptions();
         setupRoomEvents();
 
-        // Pre-warm LiveKit's connection while the browser is still preparing
-        // the room. This removes avoidable connection setup latency.
-        room.prepareConnection(data.server_url, data.participant_token).catch(error => {
-            console.warn('LiveKit connection pre-warm failed:', error);
+        // Start DNS/TLS pre-warming immediately. LiveKit documents this as a
+        // way to reduce connection setup latency, including LiveKit Cloud edge selection.
+        const prewarm = room.prepareConnection(livekitUrl).catch(error => {
+            console.warn('LiveKit pre-warm failed:', error);
         });
+
+        const data = await fetchToken(name);
+
+        setStatus('Connecting to the meeting...');
+
+        await prewarm;
+        await room.prepareConnection(data.server_url, data.participant_token);
 
         const connectionPromise = room.connect(data.server_url, data.participant_token, {
             autoSubscribe: true,
-            maxRetries: 2,
-            websocketTimeout: 10000,
-            peerConnectionTimeout: 12000,
+            maxRetries: 3,
+            websocketTimeout: 15000,
+            peerConnectionTimeout: 15000,
         });
 
         connectTimeout = setTimeout(() => {
-            room?.disconnect().catch(() => {});
-        }, 25000);
+            if (room && room.state !== ConnectionState.Connected) {
+                room.disconnect().catch(() => {});
+            }
+        }, 30000);
 
         await connectionPromise;
+
         clearTimeout(connectTimeout);
         connectTimeout = null;
 
@@ -1153,22 +1107,48 @@ async function join() {
         chatToggle.hidden = false;
 
         renderAllParticipants();
-        await requestMedia();
+        setStatus('Connected. Starting camera and microphone...', 'good');
+
+        await Promise.allSettled([
+            room.localParticipant.setMicrophoneEnabled(true, {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            }),
+            room.localParticipant.setCameraEnabled(true),
+        ]);
+
+        updateButtons();
+        renderParticipantVideo(room.localParticipant);
+
+        const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+        const camera = room.localParticipant.getTrackPublication(Track.Source.Camera);
+
+        if (!mic && !camera) {
+            setStatus('Connected, but camera and microphone could not be started. Check permissions.', 'error');
+        } else if (!mic) {
+            setStatus('Connected. Microphone is unavailable.', 'error');
+        } else if (!camera) {
+            setStatus('Connected. Camera is unavailable.', 'error');
+        } else {
+            setStatus('Connected as ' + name, 'good');
+        }
     } catch (error) {
         console.error('Join failed:', error);
-
-        cleanupRoom();
 
         if (connectTimeout) {
             clearTimeout(connectTimeout);
             connectTimeout = null;
         }
 
-        if (room) {
-            await room.disconnect().catch(() => {});
+        const failedRoom = room;
+        room = null;
+        clearMedia();
+
+        if (failedRoom) {
+            await failedRoom.disconnect().catch(() => {});
         }
 
-        room = null;
         controls.hidden = true;
         chatToggle.hidden = true;
         setChatOpen(false);
@@ -1176,15 +1156,14 @@ async function join() {
         joinButton.disabled = false;
         nameInput.disabled = false;
 
-        const message = error?.message || 'Could not join the meeting.';
-        setStatus(message, 'error');
+        setStatus(error?.message || 'Could not join the meeting.', 'error');
     } finally {
         joining = false;
     }
 }
 
 async function toggleMicrophone() {
-    if (!room || leaving) return;
+    if (!room || leaving || room.state !== ConnectionState.Connected) return;
 
     micButton.disabled = true;
 
@@ -1208,7 +1187,7 @@ async function toggleMicrophone() {
 }
 
 async function toggleCamera() {
-    if (!room || leaving) return;
+    if (!room || leaving || room.state !== ConnectionState.Connected) return;
 
     cameraButton.disabled = true;
 
@@ -1217,6 +1196,7 @@ async function toggleCamera() {
         const enabled = !!publication && !publication.isMuted && publication.isEnabled !== false;
 
         await room.localParticipant.setCameraEnabled(!enabled);
+        renderParticipantVideo(room.localParticipant);
         updateButtons();
     } catch (error) {
         console.error('Camera toggle failed:', error);
@@ -1227,7 +1207,7 @@ async function toggleCamera() {
 }
 
 async function toggleScreenShare() {
-    if (!room || leaving) return;
+    if (!room || leaving || room.state !== ConnectionState.Connected) return;
 
     screenButton.disabled = true;
 
@@ -1241,15 +1221,19 @@ async function toggleScreenShare() {
             await room.localParticipant.setScreenShareEnabled(true, {
                 audio: false,
                 contentHint: 'detail',
-                resolution: ScreenSharePresets.h1080fps15.resolution,
+                resolution: isMobile()
+                    ? ScreenSharePresets.h720fps15.resolution
+                    : ScreenSharePresets.h1080fps15.resolution,
                 selfBrowserSurface: 'exclude',
                 surfaceSwitching: 'include',
             });
         }
 
+        renderParticipantVideo(room.localParticipant);
         updateButtons();
     } catch (error) {
         console.error('Screen share toggle failed:', error);
+
         if (error?.name === 'NotAllowedError' || /cancel|denied/i.test(error?.message || '')) {
             setStatus('Screen sharing was cancelled.', 'error');
         } else {
@@ -1272,11 +1256,12 @@ async function leave() {
     }
 
     if (room) {
-        cleanupRoom();
-        await room.disconnect().catch(() => {});
+        const oldRoom = room;
         room = null;
+        await oldRoom.disconnect().catch(() => {});
     }
 
+    clearMedia();
     chatToggle.hidden = true;
     setChatOpen(false);
     location.href = '/';
@@ -1308,6 +1293,19 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && room?.state === ConnectionState.Connected) {
         renderAllParticipants();
     }
+});
+
+window.addEventListener('online', () => {
+    if (room?.state === ConnectionState.Connected) {
+        setStatus('Network restored. Checking media...', 'good');
+        renderAllParticipants();
+    } else if (!room && !joining) {
+        setStatus('Internet connection restored. Ready to join.', 'good');
+    }
+});
+
+window.addEventListener('offline', () => {
+    if (room) setStatus('Internet connection lost. Waiting for network...', 'error');
 });
 </script>
 </body>
