@@ -4,7 +4,7 @@ $url = env('LIVEKIT_URL');
 $apiKey = env('LIVEKIT_API_KEY');
 $apiSecret = env('LIVEKIT_API_SECRET');
 
-if (env('APP_ENV', 'production') === 'production' && (!$url || !$apiKey || !$apiSecret)) {
+if (env('APP_ENV', 'local') === 'production' && (!$url || !$apiKey || !$apiSecret)) {
     throw new RuntimeException(
         'LiveKit production configuration is incomplete. Set LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET.'
     );
