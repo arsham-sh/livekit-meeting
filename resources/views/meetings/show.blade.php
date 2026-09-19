@@ -796,8 +796,11 @@ function reconcileParticipantTiles(participant) {
     const expected = new Set([tileKeyFor(participant, Track.Source.Camera)]);
 
     participant.trackPublications.forEach(publication => {
-        if (publication.track || publication.source === Track.Source.ScreenShare) {
-            expected.add(tileKeyFor(participant, publication.source || Track.Source.Camera));
+        if (
+            publication.source === Track.Source.Camera ||
+            publication.source === Track.Source.ScreenShare
+        ) {
+            expected.add(tileKeyFor(participant, publication.source));
         }
     });
 
@@ -1035,10 +1038,16 @@ function setupRoomEvents() {
             setStatus('Connection restored.', 'good');
             renderAllParticipants();
         })
-        .on(RoomEvent.ParticipantMetadataChanged, participant => {
-            renderParticipant(participant);
+        .on(RoomEvent.ParticipantMetadataChanged, (_metadata, participant) => {
+            if (participant) {
+                renderParticipant(participant);
+                updateBadge(participant);
+            }
         })
-        .on(RoomEvent.TrackStreamStateChanged, (publication, participant) => {
+        .on(RoomEvent.ParticipantNameChanged, (_name, participant) => {
+            if (participant) renderParticipant(participant);
+        })
+        .on(RoomEvent.TrackStreamStateChanged, (publication, _streamState, participant) => {
             if (participant) updateBadge(participant);
         })
         .on(RoomEvent.Disconnected, reason => {
