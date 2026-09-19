@@ -68,20 +68,85 @@
             inset: 0 0 auto;
             z-index: 40;
             display: grid;
-            grid-template-columns: auto minmax(150px, 240px) auto;
-            gap: 10px;
+            grid-template-columns: minmax(170px, 1fr) minmax(180px, .9fr) minmax(420px, 1.8fr);
             align-items: center;
-            padding: 10px 14px;
-            padding-top: max(10px, env(safe-area-inset-top));
-            border-bottom: 1px solid #1f1f23;
-            background: #0d0d0fee;
-            backdrop-filter: blur(12px);
+            gap: 14px;
+            min-height: 62px;
+            padding: 9px 14px;
+            padding-top: max(9px, env(safe-area-inset-top));
+            border-bottom: 1px solid rgba(255,255,255,.07);
+            background: rgba(8,8,11,.88);
+            backdrop-filter: blur(20px) saturate(140%);
+            box-shadow: 0 10px 30px rgba(0,0,0,.18);
         }
-        .top-hud {
-            justify-self: end;
+        .room {
+            min-width: 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .room-kicker {
+            flex: 0 0 auto;
+            color: #71717a;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: .12em;
+        }
+        .room-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 850;
+            color: #f4f4f5;
+        }
+        .header-status {
+            min-width: 0;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
+            color: #a1a1aa;
+            font-size: 11px;
+        }
+        #status {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .status-dot {
+            flex: 0 0 auto;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #52525b;
+            box-shadow: 0 0 0 3px rgba(82,82,91,.12);
+        }
+        .header-actions {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 7px;
+        }
+        .header-actions input {
+            width: min(170px, 18vw);
+            min-height: 36px;
+            border-radius: 10px;
+            background: rgba(24,24,30,.78);
+            border-color: #2d2d35;
+        }
+        .header-actions #join {
+            min-height: 36px;
+            padding: 7px 14px;
+            border-radius: 10px;
+        }
+        .top-hud {
+            display: flex;
+            align-items: center;
+            gap: 5px;
             min-width: 0;
         }
         .hud-pill {
@@ -90,41 +155,27 @@
             gap: 6px;
             min-height: 30px;
             padding: 5px 9px;
-            border: 1px solid #2d2d35;
-            border-radius: 999px;
-            background: rgba(24,24,30,.78);
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 10px;
+            background: rgba(20,20,25,.72);
             color: #d4d4d8;
-            font-size: 11px;
-            font-weight: 800;
+            font-size: 10px;
+            font-weight: 850;
             white-space: nowrap;
-            box-shadow: inset 0 1px rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.16);
+            box-shadow: inset 0 1px rgba(255,255,255,.04);
         }
         .hud-dot {
             width: 7px;
             height: 7px;
             border-radius: 50%;
             background: #71717a;
-            box-shadow: 0 0 0 3px rgba(113,113,122,.12);
         }
-        .hud-dot.good { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.12), 0 0 14px rgba(74,222,128,.35); }
-        .hud-dot.warn { background: #facc15; box-shadow: 0 0 0 3px rgba(250,204,21,.12), 0 0 14px rgba(250,204,21,.25); }
-        .hud-dot.bad { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.12), 0 0 14px rgba(239,68,68,.3); }
-        .room {
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-weight: 800;
-        }
-        .status {
-            grid-column: 1 / -1;
-            min-height: 18px;
-            color: var(--muted);
-            font-size: 13px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
+        .hud-dot.good { background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.4); }
+        .hud-dot.warn { background: #facc15; box-shadow: 0 0 10px rgba(250,204,21,.35); }
+        .hud-dot.bad { background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.4); }
+        .hud-icon { color: #a1a1aa; font-size: 8px; }
+        .share-hud { color: #fecaca; border-color: rgba(239,68,68,.22); background: rgba(127,29,29,.22); }
+        .share-hud-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 9px rgba(239,68,68,.75); }
         .status.error { color: #f87171; }
         .status.good { color: #86efac; }
 
@@ -684,16 +735,24 @@
             .presentation-bar button { min-height: 40px; }
 
             header {
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 7px;
+                grid-template-columns: 1fr auto;
+                gap: 6px;
+                min-height: 72px;
                 padding: 8px 10px;
                 padding-top: max(8px, env(safe-area-inset-top));
             }
-            .room { grid-column: 1 / -1; }
-            header input { min-width: 0; width: 100%; }
+            .room { min-width: 0; }
+            .room-kicker { display: none; }
+            .room-name { font-size: 13px; }
+            .header-status { grid-column: 1 / -1; grid-row: 2; }
+            .header-actions { grid-column: 2; grid-row: 1; }
+            .header-actions input { width: 110px; }
+            .top-hud { display: none; }
+            #status { font-size: 11px; }
+            #join { min-height: 36px; }
             .status { font-size: 12px; }
             #grid {
-                inset: 94px 0 0;
+                inset: 76px 0 0;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 grid-auto-rows: auto;
                 gap: 7px;
@@ -801,14 +860,19 @@
 </head>
 <body>
 <header>
-    <div class="room">Room: {{ $room }}</div>
-    <input id="name" placeholder="Your name" maxlength="80" autocomplete="name">
-    <button id="join">Join</button>
-    <div id="status" class="status">Enter your name and join the room.</div>
-    <div class="top-hud" aria-label="Meeting status">
-        <span class="hud-pill"><span id="network-dot" class="hud-dot"></span><span id="network-label">Offline</span></span>
-        <span class="hud-pill">👥 <span id="participant-count-top">1</span></span>
-        <span id="share-indicator" class="hud-pill" hidden>🔴 Sharing</span>
+    <div class="room"><span class="room-kicker">LIVE ROOM</span><span class="room-name">{{ $room }}</span></div>
+    <div class="header-status">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="status">Enter your name and join the room.</span>
+    </div>
+    <div class="header-actions">
+        <input id="name" placeholder="Your name" maxlength="80" autocomplete="name">
+        <button id="join">Join</button>
+        <div class="top-hud" aria-label="Meeting status">
+            <span class="hud-pill network-pill"><span id="network-dot" class="hud-dot"></span><span id="network-label">Offline</span></span>
+            <span class="hud-pill"><span class="hud-icon">●</span><span id="participant-count-top">1</span></span>
+            <span id="share-indicator" class="hud-pill share-hud" hidden><span class="share-hud-dot"></span>Sharing</span>
+        </div>
     </div>
 </header>
 
@@ -1505,24 +1569,24 @@ function updateBadge(participant) {
 }
 
 function currentVideoPublication(participant) {
-    const publications = participant.videoTrackPublications
+    const publications = participant?.videoTrackPublications
         ? [...participant.videoTrackPublications.values()]
         : [];
-    const screen = publications.find(publication =>
-        publication.source === Track.Source.ScreenShare &&
-        publication.track &&
-        publication.isMuted !== true &&
-        publication.isEnabled !== false
-    );
-    if (screen) return screen;
 
-    const camera = publications.find(publication =>
-        publication.source === Track.Source.Camera &&
-        publication.track &&
+    // Screen share is a presentation surface, so it always wins over camera
+    // when both are subscribed. This prevents a later camera event from
+    // replacing the shared screen in the participant tile.
+    const active = publication => (
+        publication?.track &&
         publication.isMuted !== true &&
         publication.isEnabled !== false
     );
-    return camera || null;
+
+    return publications.find(publication =>
+        publication.source === Track.Source.ScreenShare && active(publication)
+    ) || publications.find(publication =>
+        publication.source === Track.Source.Camera && active(publication)
+    ) || null;
 }
 
 function removeVideoForParticipant(participant) {
@@ -1624,7 +1688,7 @@ function openPresentation(participant) {
     closePresentation();
     presentationTrack = { track: publication.track, participant };
     presentationTitle.textContent = (participant.name || participant.identity) + ' · Screen share';
-    const attached = publication.track.attach(presentationVideo);
+    publication.track.attach(presentationVideo);
     presentationVideo.autoplay = true;
     presentationVideo.playsInline = true;
     presentationVideo.muted = true;
@@ -1663,6 +1727,16 @@ function updateNetworkHud() {
     const value = String(room.localParticipant.connectionQuality || 'unknown').toLowerCase();
     networkDot.className = 'hud-dot ' + (value === 'excellent' ? 'good' : value === 'good' ? 'good' : value === 'poor' ? 'warn' : value === 'lost' ? 'bad' : '');
     networkLabel.textContent = value === 'excellent' ? 'Excellent' : value === 'good' ? 'Good' : value === 'poor' ? 'Poor' : value === 'lost' ? 'Lost' : 'Connecting';
+    const statusDot = document.getElementById('status-dot');
+    if (statusDot) {
+        statusDot.style.background = value === 'excellent' || value === 'good'
+            ? '#4ade80'
+            : value === 'poor'
+                ? '#facc15'
+                : value === 'lost'
+                    ? '#ef4444'
+                    : '#52525b';
+    }
 }
 
 function updateShareButton() {
@@ -1754,7 +1828,22 @@ function renderAllParticipants() {
     participantTile(room.localParticipant);
     renderParticipant(room.localParticipant);
 
-    room.remoteParticipants.forEach(renderParticipant);
+    room.remoteParticipants.forEach(participant => {
+        renderParticipant(participant);
+        participant.videoTrackPublications?.forEach(publication => {
+            if (
+                publication.source === Track.Source.ScreenShare &&
+                !publication.isSubscribed &&
+                !publication.isMuted &&
+                publication.isEnabled !== false
+            ) {
+                publication.setSubscribed(true).catch(error => {
+                    console.warn('Screen share subscribe retry failed:', error);
+                });
+            }
+        });
+    });
+
     updateGridDensity();
     updateButtons();
 }
@@ -2155,9 +2244,31 @@ function setupRoomEvents() {
         .on(RoomEvent.TrackUnsubscribed, track => {
             detachTrack(track);
         })
-        .on(RoomEvent.TrackPublished, (publication, participant) => {
+        .on(RoomEvent.TrackPublished, async (publication, participant) => {
             participantTile(participant);
             updateBadge(participant);
+
+            // autoSubscribe is enabled, but explicitly subscribing to a newly
+            // published screen track avoids browsers/LiveKit clients getting
+            // stuck with a published-but-unsubscribed presentation track.
+            if (
+                participant !== room?.localParticipant &&
+                publication.kind === Track.Kind.Video &&
+                publication.source === Track.Source.ScreenShare &&
+                !publication.isSubscribed
+            ) {
+                try {
+                    await publication.setSubscribed(true);
+                } catch (error) {
+                    console.warn('Screen share subscription failed:', error);
+                }
+            }
+
+            if (publication.track) {
+                attachTrack(publication.track, participant, publication);
+            } else if (participant) {
+                renderParticipantVideo(participant);
+            }
         })
         .on(RoomEvent.TrackUnpublished, (publication, participant) => {
             if (publication.track) detachTrack(publication.track);
@@ -2223,8 +2334,17 @@ function setupRoomEvents() {
             console.warn('Media device error:', error);
             setStatus('Camera or microphone is unavailable. Check browser permissions.', 'error');
         })
-        .on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant, reason) => {
+        .on(RoomEvent.TrackSubscriptionFailed, async (trackSid, participant, reason) => {
             console.warn('Track subscription failed:', trackSid, participant?.identity, reason);
+            const publication = participant?.getTrackPublication?.(trackSid);
+            if (publication?.source === Track.Source.ScreenShare) {
+                try {
+                    await publication.setSubscribed(true);
+                    return;
+                } catch (error) {
+                    console.warn('Screen share resubscribe failed:', error);
+                }
+            }
             if (participant) {
                 setStatus('A participant video could not be loaded. Reconnecting media...', 'error');
             }
