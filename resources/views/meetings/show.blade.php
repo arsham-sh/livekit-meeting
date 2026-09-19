@@ -83,10 +83,29 @@
 
         #grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+            grid-auto-rows: minmax(150px, 1fr);
+            align-content: start;
             gap: 10px;
-            padding: 12px 12px 110px;
-            min-height: calc(100vh - 75px);
+            padding: 12px;
+            height: calc(100vh - 75px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        #grid.compact {
+            grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+            grid-auto-rows: minmax(130px, 1fr);
+        }
+
+        #grid.dense {
+            grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+            grid-auto-rows: minmax(110px, 1fr);
+            gap: 6px;
+        }
+
+        [hidden] {
+            display: none !important;
         }
 
         .tile {
@@ -327,6 +346,8 @@
             input { width: 100%; }
             #grid {
                 grid-template-columns: 1fr;
+                grid-auto-rows: minmax(210px, auto);
+                height: calc(100vh - 62px);
                 padding: 8px 8px 100px;
             }
             .tile { min-height: 210px; }
@@ -571,6 +592,32 @@ function identityKey(participant) {
     return participant.identity;
 }
 
+function tileKeyFor(participant, source = Track.Source.Camera) {
+    return identityKey(participant) + ':' + source;
+}
+
+function updateGridDensity() {
+    const count = grid.querySelectorAll('.tile[data-source="' + CSS.escape(Track.Source.Camera) + '"]').length;
+
+    grid.classList.toggle('dense', count >= 13);
+    grid.classList.toggle('compact', count >= 7 && count < 13);
+}
+
+function removeDuplicateTiles(participant, source) {
+    const key = tileKeyFor(participant, source);
+    const tiles = [...grid.querySelectorAll('[data-tile-key="' + CSS.escape(key) + '"]')];
+
+    if (tiles.length <= 1) return tiles[0] || null;
+
+    const primary = tiles.find(tile => tile.querySelector('video')) || tiles[0];
+
+    tiles.forEach(tile => {
+        if (tile !== primary) tile.remove();
+    });
+
+    return primary;
+}
+
 function tileFor(participant, source = Track.Source.Camera) {
     const identity = identityKey(participant);
     const tileKey = `${identity}:${source}`;
@@ -601,6 +648,9 @@ function tileFor(participant, source = Track.Source.Camera) {
 
     tile.querySelector('.name').textContent = participant.name || participant.identity;
     tile.querySelector('.avatar').textContent = initials(participant.name || participant.identity);
+
+    removeDuplicateTiles(participant, source);
+    updateGridDensity();
 
     return tile;
 }
@@ -652,12 +702,34 @@ function removeParticipant(participant) {
 }
 
 function attachVideoTrack(track, participant, publication) {
-    const source = publication.source || Track.Source.Camera;
-    const tile = tileFor(participant, source);
+    const source = publication.source || track.source || Track.Source.Camera;
     const sid = publication.trackSid || track.sid;
 
-    if (mediaElements.has(sid)) {
-        return;
+    if (!sid) return;
+
+    const tile = tileFor(participant, source);
+    const existingElement = mediaElements.get(sid);
+
+    if (existingElement) {
+        existingElement.remove();
+        mediaElements.delete(sid);
+    }
+
+    const existingVideo = tile.querySelector('video');
+
+    if (existingVideo) {
+        const existingSid = existingVideo.dataset.trackSid;
+
+        if (existingSid === sid) {
+            mediaElements.set(sid, existingVideo);
+            return;
+        }
+
+        existingVideo.remove();
+
+        if (existingSid) {
+            mediaElements.delete(existingSid);
+        }
     }
 
     const element = track.attach();
@@ -667,13 +739,11 @@ function attachVideoTrack(track, participant, publication) {
     element.dataset.trackSid = sid;
     element.dataset.source = source;
 
-    const oldElement = tile.querySelector(`video[data-source="${CSS.escape(source)}"]`);
-    if (oldElement) {
-        oldElement.remove();
-    }
-
     tile.insertBefore(element, tile.querySelector('.avatar'));
     mediaElements.set(sid, element);
+
+    removeDuplicateTiles(participant, source);
+    updateGridDensity();
 }
 
 function attachRemoteAudio(track, participant, publication) {
@@ -714,10 +784,44 @@ function renderParticipant(participant) {
     participant.trackPublications.forEach(publication => {
         if (publication.track) {
             attachTrack(publication.track, participant, publication);
+        } else if (publication.source === Track.Source.ScreenShare) {
+            tileFor(participant, publication.source);
         }
     });
 
     updateBadge(participant);
+}
+
+function reconcileParticipantTiles(participant) {
+    const expected = new Set([tileKeyFor(participant, Track.Source.Camera)]);
+
+    participant.trackPublications.forEach(publication => {
+        if (
+            publication.source === Track.Source.Camera ||
+            publication.source === Track.Source.ScreenShare
+        ) {
+            expected.add(tileKeyFor(participant, publication.source));
+        }
+    });
+
+    grid.querySelectorAll('[data-identity="' + CSS.escape(participant.identity) + '"]').forEach(tile => {
+        if (!expected.has(tile.dataset.tileKey)) {
+            tile.remove();
+        }
+    });
+
+    participant.trackPublications.forEach(publication => {
+        if (publication.track) {
+            attachTrack(publication.track, participant, publication);
+        }
+    });
+
+    expected.forEach(key => {
+        const source = key.slice(participant.identity.length + 1);
+        removeDuplicateTiles(participant, source);
+    });
+
+    updateGridDensity();
 }
 
 function renderAllParticipants() {
@@ -725,6 +829,10 @@ function renderAllParticipants() {
 
     renderParticipant(room.localParticipant);
     room.remoteParticipants.forEach(renderParticipant);
+
+    reconcileParticipantTiles(room.localParticipant);
+    room.remoteParticipants.forEach(reconcileParticipantTiles);
+
     updateButtons();
 }
 
@@ -832,6 +940,7 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
+            reconcileParticipantTiles(participant);
         })
         .on(RoomEvent.TrackUnsubscribed, (track) => {
             detachTrack(track);
@@ -849,9 +958,11 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.ParticipantConnected, participant => {
             renderParticipant(participant);
+            reconcileParticipantTiles(participant);
         })
         .on(RoomEvent.ParticipantDisconnected, participant => {
             removeParticipant(participant);
+            updateGridDensity();
         })
         .on(RoomEvent.LocalTrackPublished, publication => {
             if (publication.track) {
@@ -926,6 +1037,18 @@ function setupRoomEvents() {
         .on(RoomEvent.Reconnected, () => {
             setStatus('Connection restored.', 'good');
             renderAllParticipants();
+        })
+        .on(RoomEvent.ParticipantMetadataChanged, (_metadata, participant) => {
+            if (participant) {
+                renderParticipant(participant);
+                updateBadge(participant);
+            }
+        })
+        .on(RoomEvent.ParticipantNameChanged, (_name, participant) => {
+            if (participant) renderParticipant(participant);
+        })
+        .on(RoomEvent.TrackStreamStateChanged, (publication, _streamState, participant) => {
+            if (participant) updateBadge(participant);
         })
         .on(RoomEvent.Disconnected, reason => {
             if (!leaving) {
