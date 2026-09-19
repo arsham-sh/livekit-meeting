@@ -2696,16 +2696,17 @@ async function join() {
         renderAllParticipants();
         electDocumentHost();
         updateDocumentPermissionUi();
-        setStatus('Connected. Starting camera and microphone...', 'good');
+        setStatus('Connected. Starting microphone. Camera is off by default.', 'good');
 
-        await Promise.allSettled([
-            room.localParticipant.setMicrophoneEnabled(true, {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-            }),
-            room.localParticipant.setCameraEnabled(true),
-        ]);
+        await room.localParticipant.setMicrophoneEnabled(true, {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+        });
+
+        // Never enable the camera as part of joining. Users explicitly turn it
+        // on with the Camera button after entering the meeting.
+        await room.localParticipant.setCameraEnabled(false);
 
         updateButtons();
         updateShareButton();
@@ -2717,12 +2718,8 @@ async function join() {
         const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
         const camera = room.localParticipant.getTrackPublication(Track.Source.Camera);
 
-        if (!mic && !camera) {
-            setStatus('Connected, but camera and microphone could not be started. Check permissions.', 'error');
-        } else if (!mic) {
-            setStatus('Connected. Microphone is unavailable.', 'error');
-        } else if (!camera) {
-            setStatus('Connected. Camera is unavailable.', 'error');
+        if (!mic) {
+            setStatus('Connected. Microphone is unavailable. Check browser permissions.', 'error');
         } else {
             setStatus('Connected as ' + name, 'good');
         }
