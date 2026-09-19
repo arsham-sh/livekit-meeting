@@ -18,7 +18,6 @@
         }
 
         * { box-sizing: border-box; }
-
         html, body { min-height: 100%; }
 
         body {
@@ -38,8 +37,10 @@
             font-weight: 700;
             background: var(--panel-2);
             color: var(--text);
+            transition: opacity .15s ease, transform .05s ease;
         }
 
+        button:active { transform: translateY(1px); }
         button:hover { filter: brightness(1.12); }
         button:disabled { cursor: wait; opacity: .55; }
 
@@ -68,15 +69,13 @@
             z-index: 20;
         }
 
-        .room {
-            font-weight: 800;
-            margin-right: auto;
-        }
+        .room { font-weight: 800; margin-right: auto; }
 
         .status {
             width: 100%;
             color: var(--muted);
             font-size: 14px;
+            min-height: 20px;
         }
 
         .status.error { color: #f87171; }
@@ -100,6 +99,7 @@
             display: grid;
             place-items: center;
             border: 1px solid #222228;
+            contain: layout paint;
         }
 
         .tile video {
@@ -147,6 +147,11 @@
             border-radius: 8px;
             font-size: 12px;
             color: #d4d4d8;
+        }
+
+        .speaking {
+            outline: 2px solid #fff;
+            outline-offset: -2px;
         }
 
         #audio-root {
@@ -242,7 +247,9 @@ const csrf = document.querySelector('meta[name="csrf-token"]').content;
 let room = null;
 let joining = false;
 let leaving = false;
-let reconnectTimer = null;
+let audioUnlockNeeded = false;
+
+const mediaElements = new Map();
 
 function setStatus(message, type = '') {
     status.textContent = message;
@@ -259,18 +266,22 @@ function initials(name) {
         .join('') || '?';
 }
 
+function identityKey(participant) {
+    return participant.identity;
+}
+
 function tileFor(participant) {
-    const selector = `[data-identity="${CSS.escape(participant.identity)}"]`;
+    const identity = identityKey(participant);
+    const selector = `[data-identity="${CSS.escape(identity)}"]`;
     let tile = grid.querySelector(selector);
 
     if (!tile) {
         tile = document.createElement('div');
         tile.className = 'tile';
-        tile.dataset.identity = participant.identity;
+        tile.dataset.identity = identity;
 
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
-        avatar.textContent = initials(participant.name || participant.identity);
 
         const name = document.createElement('span');
         name.className = 'name';
@@ -288,18 +299,32 @@ function tileFor(participant) {
     return tile;
 }
 
+function getPublication(participant, source) {
+    return participant.getTrackPublication(source);
+}
+
 function updateBadge(participant) {
     const tile = tileFor(participant);
     const badge = tile.querySelector('.badge');
-    const mic = participant.isMicrophoneEnabled;
-    const camera = participant.isCameraEnabled;
+    const micPublication = getPublication(participant, 'microphone');
+    const cameraPublication = getPublication(participant, 'camera');
 
     const parts = [];
-    if (!mic) parts.push('Muted');
-    if (!camera) parts.push('Camera off');
+    if (micPublication?.isMuted || micPublication?.isEnabled === false) parts.push('Muted');
+    if (cameraPublication?.isMuted || cameraPublication?.isEnabled === false) parts.push('Camera off');
 
     badge.textContent = parts.join(' · ');
     badge.hidden = parts.length === 0;
+}
+
+function detachTrack(track) {
+    if (!track) return;
+
+    track.detach().forEach(element => element.remove());
+
+    if (track.sid) {
+        mediaElements.delete(track.sid);
+    }
 }
 
 function removeParticipant(participant) {
@@ -310,54 +335,57 @@ function removeParticipant(participant) {
     grid.querySelector(`[data-identity="${CSS.escape(participant.identity)}"]`)?.remove();
 }
 
-function detachTrack(track) {
-    if (!track) return;
-
-    track.detach().forEach(element => {
-        element.remove();
-    });
-}
-
-function attachVideoTrack(track, participant) {
+function attachVideoTrack(track, participant, publication) {
     const tile = tileFor(participant);
+    const sid = publication.trackSid || track.sid;
 
-    tile.querySelectorAll('video').forEach(video => video.remove());
+    if (mediaElements.has(sid)) {
+        return;
+    }
 
-    const avatar = tile.querySelector('.avatar');
     const element = track.attach();
-
     element.autoplay = true;
     element.playsInline = true;
     element.muted = participant === room?.localParticipant;
-    element.dataset.trackSid = track.sid;
+    element.dataset.trackSid = sid;
+    element.dataset.source = publication.source || '';
 
-    tile.insertBefore(element, avatar);
+    const oldElement = tile.querySelector(`video[data-source="${CSS.escape(publication.source || '')}"]`);
+    if (oldElement) {
+        oldElement.remove();
+    }
+
+    tile.insertBefore(element, tile.querySelector('.avatar'));
+    mediaElements.set(sid, element);
 }
 
-function attachRemoteAudio(track, participant) {
-    // Never attach the local microphone. Playing our own mic back is a
-    // direct route to echo and is not useful in a meeting.
+function attachRemoteAudio(track, participant, publication) {
     if (participant === room?.localParticipant) return;
+
+    const sid = publication.trackSid || track.sid;
+    if (mediaElements.has(sid)) return;
 
     const element = track.attach();
     element.autoplay = true;
     element.playsInline = true;
-    element.dataset.trackSid = track.sid;
+    element.dataset.trackSid = sid;
 
     audioRoot.appendChild(element);
+    mediaElements.set(sid, element);
 
     element.play().catch(() => {
-        setStatus('Connected. Click the page once to enable remote audio.');
+        audioUnlockNeeded = true;
+        setStatus('Connected. Click anywhere to enable remote audio.');
     });
 }
 
-function attachTrack(track, participant) {
+function attachTrack(track, participant, publication) {
     if (!track) return;
 
     if (track.kind === 'video') {
-        attachVideoTrack(track, participant);
+        attachVideoTrack(track, participant, publication);
     } else if (track.kind === 'audio') {
-        attachRemoteAudio(track, participant);
+        attachRemoteAudio(track, participant, publication);
     }
 
     updateBadge(participant);
@@ -365,13 +393,26 @@ function attachTrack(track, participant) {
 
 function renderParticipant(participant) {
     tileFor(participant);
+
     participant.trackPublications.forEach(publication => {
-        if (publication.track) attachTrack(publication.track, participant);
+        if (publication.track) {
+            attachTrack(publication.track, participant, publication);
+        }
     });
+
     updateBadge(participant);
 }
 
+function renderAllParticipants() {
+    if (!room) return;
+
+    renderParticipant(room.localParticipant);
+    room.remoteParticipants.forEach(renderParticipant);
+    updateButtons();
+}
+
 function clearMedia() {
+    mediaElements.clear();
     grid.replaceChildren();
     audioRoot.replaceChildren();
 }
@@ -392,13 +433,93 @@ function cleanupRoom() {
     clearMedia();
 }
 
+function updateButtons() {
+    if (!room) return;
+
+    const micPublication = room.localParticipant.getTrackPublication('microphone');
+    const cameraPublication = room.localParticipant.getTrackPublication('camera');
+
+    const micOn = !!micPublication && !micPublication.isMuted && micPublication.isEnabled !== false;
+    const cameraOn = !!cameraPublication && !cameraPublication.isMuted && cameraPublication.isEnabled !== false;
+
+    micButton.textContent = micOn ? 'Mute' : 'Unmute';
+    cameraButton.textContent = cameraOn ? 'Camera off' : 'Camera on';
+
+    updateBadge(room.localParticipant);
+}
+
+async function unlockAudio() {
+    if (!room || !audioUnlockNeeded) return;
+
+    try {
+        if (typeof room.startAudio === 'function') {
+            await room.startAudio();
+        } else {
+            const elements = audioRoot.querySelectorAll('audio');
+            await Promise.all([...elements].map(element => element.play().catch(() => {})));
+        }
+
+        audioUnlockNeeded = false;
+        setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
+    } catch (error) {
+        console.warn('Audio unlock failed:', error);
+    }
+}
+
+async function fetchToken(name) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(`/meetings/${encodeURIComponent(roomName)}/token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ name }),
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`Token request failed (${response.status}): ${body}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.server_url || !data.participant_token) {
+            throw new Error('Laravel returned an invalid LiveKit token response.');
+        }
+
+        return data;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('The server took too long to create the meeting token.');
+        }
+
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 function setupRoomEvents() {
     room
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-            attachTrack(track, participant);
+            attachTrack(track, participant, publication);
         })
-        .on(RoomEvent.TrackUnsubscribed, track => {
+        .on(RoomEvent.TrackUnsubscribed, (track) => {
             detachTrack(track);
+        })
+        .on(RoomEvent.TrackPublished, (publication, participant) => {
+            tileFor(participant);
+            updateBadge(participant);
+        })
+        .on(RoomEvent.TrackUnpublished, (publication, participant) => {
+            if (publication.track) detachTrack(publication.track);
+            updateBadge(participant);
         })
         .on(RoomEvent.ParticipantConnected, participant => {
             renderParticipant(participant);
@@ -408,42 +529,64 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.LocalTrackPublished, publication => {
             if (publication.track) {
-                attachTrack(publication.track, room.localParticipant);
+                attachTrack(publication.track, room.localParticipant, publication);
             }
-            updateBadge(room.localParticipant);
+            updateButtons();
         })
         .on(RoomEvent.LocalTrackUnpublished, publication => {
             if (publication.track) detachTrack(publication.track);
-            updateBadge(room.localParticipant);
+            updateButtons();
         })
         .on(RoomEvent.TrackMuted, (publication, participant) => {
             updateBadge(participant);
+            if (participant === room?.localParticipant) updateButtons();
         })
         .on(RoomEvent.TrackUnmuted, (publication, participant) => {
             updateBadge(participant);
+            if (participant === room?.localParticipant) updateButtons();
         })
         .on(RoomEvent.ActiveSpeakersChanged, speakers => {
             document.querySelectorAll('.tile').forEach(tile => {
-                tile.style.outline = '';
+                tile.classList.remove('speaking');
             });
 
             speakers.forEach(participant => {
-                const tile = grid.querySelector(
-                    `[data-identity="${CSS.escape(participant.identity)}"]`
-                );
-                if (tile) tile.style.outline = '2px solid #fff';
+                grid.querySelector(`[data-identity="${CSS.escape(participant.identity)}"]`)
+                    ?.classList.add('speaking');
             });
+        })
+        .on(RoomEvent.ConnectionQualityChanged, (connectionQuality, participant) => {
+            if (participant === room?.localParticipant) {
+                quality.textContent = `Connection: ${connectionQuality}`;
+            }
+        })
+        .on(RoomEvent.AudioPlaybackStatusChanged, () => {
+            if (room && !room.canPlaybackAudio) {
+                audioUnlockNeeded = true;
+                setStatus('Connected. Click anywhere to enable remote audio.');
+            }
+        })
+        .on(RoomEvent.MediaDevicesError, error => {
+            console.warn('Media device error:', error);
+            setStatus('A camera or microphone device could not be opened. Check browser permissions and device access.', 'error');
+        })
+        .on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant, reason) => {
+            console.warn('Track subscription failed:', trackSid, participant.identity, reason);
+            setStatus(`Could not load media from ${participant.name || participant.identity}.`, 'error');
         })
         .on(RoomEvent.ConnectionStateChanged, state => {
             if (state === ConnectionState.Connected) {
                 setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
+            } else if (state === ConnectionState.SignalReconnecting) {
+                setStatus('Signaling interrupted. Reconnecting...');
             } else if (state === ConnectionState.Reconnecting) {
-                setStatus('Connection interrupted. Reconnecting...');
+                setStatus('Media connection interrupted. Reconnecting...');
             } else if (state === ConnectionState.Disconnected && !leaving) {
                 setStatus('Disconnected from the meeting.', 'error');
                 controls.hidden = true;
                 joinButton.hidden = false;
                 joinButton.disabled = false;
+                nameInput.disabled = false;
             }
         })
         .on(RoomEvent.Reconnecting, () => {
@@ -461,46 +604,18 @@ function setupRoomEvents() {
         });
 }
 
-function renderAllParticipants() {
-    if (!room) return;
-
-    renderParticipant(room.localParticipant);
-
-    room.remoteParticipants.forEach(participant => {
-        renderParticipant(participant);
-    });
-
-    updateButtons();
-}
-
-function updateButtons() {
-    if (!room) return;
-
-    const micEnabled = room.localParticipant.isMicrophoneEnabled;
-    const cameraEnabled = room.localParticipant.isCameraEnabled;
-
-    micButton.textContent = micEnabled ? 'Mute' : 'Unmute';
-    cameraButton.textContent = cameraEnabled ? 'Camera off' : 'Camera on';
-    updateBadge(room.localParticipant);
-}
-
 async function requestMedia() {
-    let microphoneError = null;
-    let cameraError = null;
+    const results = await Promise.allSettled([
+        room.localParticipant.setMicrophoneEnabled(true, {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+        }),
+        room.localParticipant.setCameraEnabled(true),
+    ]);
 
-    try {
-        await room.localParticipant.setMicrophoneEnabled(true);
-    } catch (error) {
-        microphoneError = error;
-        console.warn('Microphone unavailable:', error);
-    }
-
-    try {
-        await room.localParticipant.setCameraEnabled(true);
-    } catch (error) {
-        cameraError = error;
-        console.warn('Camera unavailable:', error);
-    }
+    const microphoneError = results[0].status === 'rejected' ? results[0].reason : null;
+    const cameraError = results[1].status === 'rejected' ? results[1].reason : null;
 
     updateButtons();
 
@@ -513,31 +628,6 @@ async function requestMedia() {
     } else {
         setStatus(`Connected as ${nameInput.value.trim()}`, 'good');
     }
-}
-
-async function fetchToken(name) {
-    const response = await fetch(`/meetings/${encodeURIComponent(roomName)}/token`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrf,
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({ name }),
-    });
-
-    if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`Token request failed (${response.status}): ${body}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.server_url || !data.participant_token) {
-        throw new Error('Laravel returned an invalid LiveKit token response.');
-    }
-
-    return data;
 }
 
 async function join() {
@@ -558,14 +648,24 @@ async function join() {
     try {
         const data = await fetchToken(name);
 
-        setStatus('Connecting to meeting...');
+        setStatus('Starting secure connection...');
 
         room = new Room({
             adaptiveStream: true,
             dynacast: true,
+            disconnectOnPageLeave: true,
+            audioCaptureDefaults: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
         });
 
         setupRoomEvents();
+
+        // Pre-warm LiveKit's connection while the browser is still preparing
+        // the room. This removes avoidable connection setup latency.
+        room.prepareConnection(data.server_url, data.participant_token);
 
         await room.connect(data.server_url, data.participant_token, {
             autoSubscribe: true,
@@ -590,6 +690,7 @@ async function join() {
         controls.hidden = true;
         joinButton.hidden = false;
         joinButton.disabled = false;
+        nameInput.disabled = false;
 
         const message = error?.message || 'Could not join the meeting.';
         setStatus(message, 'error');
@@ -599,14 +700,20 @@ async function join() {
 }
 
 async function toggleMicrophone() {
-    if (!room) return;
+    if (!room || leaving) return;
 
     micButton.disabled = true;
 
     try {
-        await room.localParticipant.setMicrophoneEnabled(
-            !room.localParticipant.isMicrophoneEnabled
-        );
+        const publication = room.localParticipant.getTrackPublication('microphone');
+        const enabled = !!publication && !publication.isMuted && publication.isEnabled !== false;
+
+        await room.localParticipant.setMicrophoneEnabled(!enabled, {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+        });
+
         updateButtons();
     } catch (error) {
         console.error('Microphone toggle failed:', error);
@@ -617,14 +724,15 @@ async function toggleMicrophone() {
 }
 
 async function toggleCamera() {
-    if (!room) return;
+    if (!room || leaving) return;
 
     cameraButton.disabled = true;
 
     try {
-        await room.localParticipant.setCameraEnabled(
-            !room.localParticipant.isCameraEnabled
-        );
+        const publication = room.localParticipant.getTrackPublication('camera');
+        const enabled = !!publication && !publication.isMuted && publication.isEnabled !== false;
+
+        await room.localParticipant.setCameraEnabled(!enabled);
         updateButtons();
     } catch (error) {
         console.error('Camera toggle failed:', error);
@@ -650,6 +758,9 @@ async function leave() {
 }
 
 joinButton.addEventListener('click', join);
+micButton.addEventListener('click', toggleMicrophone);
+cameraButton.addEventListener('click', toggleCamera);
+leaveButton.addEventListener('click', leave);
 
 nameInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
@@ -658,14 +769,10 @@ nameInput.addEventListener('keydown', event => {
     }
 });
 
-micButton.addEventListener('click', toggleMicrophone);
-cameraButton.addEventListener('click', toggleCamera);
-leaveButton.addEventListener('click', leave);
+document.addEventListener('pointerdown', unlockAudio, { passive: true });
 
 window.addEventListener('pagehide', () => {
-    if (room) {
-        room.disconnect();
-    }
+    room?.disconnect();
 });
 
 document.addEventListener('visibilitychange', () => {
