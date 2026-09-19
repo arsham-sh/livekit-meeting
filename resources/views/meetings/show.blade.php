@@ -1493,6 +1493,32 @@ async function unlockAudio() {
 }
 
 
+function setWhiteboardZoom(nextZoom) {
+    whiteboardZoom = Math.min(3, Math.max(0.5, Number(nextZoom) || 1));
+    whiteboardZoomLabel.textContent = Math.round(whiteboardZoom * 100) + '%';
+    redrawWhiteboard();
+}
+
+function openWhiteboard(open = true) {
+    if (open && (!room || room.state !== ConnectionState.Connected)) {
+        setStatus('Join the meeting before opening the whiteboard.', 'error');
+        return;
+    }
+
+    whiteboardOpen = open;
+    whiteboard.hidden = !open;
+
+    if (!open) {
+        whiteboardDrawing = null;
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        resizeWhiteboardCanvas();
+        redrawWhiteboard();
+    });
+}
+
 function resizeWhiteboardCanvas() {
     const rect = whiteboardCanvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
