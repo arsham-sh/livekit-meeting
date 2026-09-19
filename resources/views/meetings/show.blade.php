@@ -318,58 +318,6 @@
         }
         .speaking { outline: 2px solid #fff; outline-offset: -2px; }
         .avatar[hidden] { display: none !important; }
-        .avatar { cursor: pointer; }
-        .avatar.mood-happy { animation: moodHappy .55s cubic-bezier(.2,.9,.2,1); filter: saturate(1.35) brightness(1.08); }
-        .avatar.mood-excited { animation: moodExcited .7s ease-in-out; filter: saturate(1.5) contrast(1.05); }
-        .avatar.mood-sleepy { animation: moodSleepy .8s ease-in-out; filter: saturate(.72) brightness(.9); }
-        .avatar.mood-angry { animation: moodAngry .42s ease-in-out; filter: saturate(1.5) contrast(1.15); }
-        .mood-bubble {
-            position: absolute;
-            z-index: 8;
-            top: 12px;
-            left: 50%;
-            translate: -50% 0;
-            min-width: 30px;
-            min-height: 30px;
-            padding: 4px 7px;
-            display: grid;
-            place-items: center;
-            border-radius: 999px;
-            background: rgba(8,8,11,.82);
-            border: 1px solid rgba(255,255,255,.14);
-            box-shadow: 0 8px 22px rgba(0,0,0,.28);
-            font-size: 18px;
-            pointer-events: none;
-            animation: moodBubble .9s ease-out both;
-        }
-        @keyframes moodHappy {
-            0% { transform: scale(1) rotate(0); }
-            45% { transform: scale(1.16) rotate(-5deg); }
-            100% { transform: scale(1) rotate(0); }
-        }
-        @keyframes moodExcited {
-            0%, 100% { transform: translateY(0) rotate(0); }
-            25% { transform: translateY(-8px) rotate(-7deg); }
-            50% { transform: translateY(0) rotate(7deg); }
-            75% { transform: translateY(-4px) rotate(-4deg); }
-        }
-        @keyframes moodSleepy {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(.92) translateY(4px); opacity: .72; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes moodAngry {
-            0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-5px); }
-            40% { transform: translateX(5px); }
-            60% { transform: translateX(-4px); }
-            80% { transform: translateX(4px); }
-        }
-        @keyframes moodBubble {
-            0% { opacity: 0; transform: translateY(8px) scale(.7); }
-            25% { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-14px) scale(1.05); }
-        }
         .ping-pill { min-width: 88px; justify-content: center; }
         .ping-pill .hud-icon { font-size: 11px; }
 
@@ -1106,7 +1054,7 @@ let lastJoinAttempt = 0;
 let reconnecting = false;
 let presentationTrack = null;
 let pingTimer = null;
-let screenShareRetryTimer = null;
+const screenShareRetryTimers = new Set();
 
 const mediaElements = new Map();
 
@@ -1472,10 +1420,28 @@ function initials(name) {
         .join('') || '?';
 }
 
-function blobatarUrl(name, size = 96) {
+const blobatarExpressions = [
+    'idle',
+    'happy',
+    'surprised',
+    'wink',
+    'sleepy',
+    'smug',
+    'unsure',
+    'scared',
+    'love',
+    'shy',
+    'sick',
+    'thinking',
+];
+
+function blobatarUrl(name, size = 96, expression = 'idle') {
     const value = String(name || 'participant').trim() || 'participant';
+    const pose = blobatarExpressions.includes(expression) ? expression : 'idle';
     return 'https://blobatar.dev/avatar/' + encodeURIComponent(value) +
-        '?size=' + encodeURIComponent(size) + '&background=circle';
+        '?size=' + encodeURIComponent(size) +
+        '&background=circle' +
+        '&expression=' + encodeURIComponent(pose);
 }
 
 function participantTile(participant) {
@@ -1515,38 +1481,7 @@ function participantTile(participant) {
             changeParticipantZoom(participant.identity, button.dataset.zoomAction);
         });
 
-        const moodBubble = document.createElement('span');
-        moodBubble.className = 'mood-bubble';
-        moodBubble.hidden = true;
-        moodBubble.setAttribute('aria-hidden', 'true');
-
-        const moods = [
-            { className: 'mood-happy', emoji: '😊' },
-            { className: 'mood-excited', emoji: '🤩' },
-            { className: 'mood-sleepy', emoji: '😴' },
-            { className: 'mood-angry', emoji: '😤' },
-        ];
-        let moodIndex = 0;
-        avatar.addEventListener('click', event => {
-            event.stopPropagation();
-            const mood = moods[moodIndex % moods.length];
-            moodIndex += 1;
-            moods.forEach(item => avatar.classList.remove(item.className));
-            void avatar.offsetWidth;
-            avatar.classList.add(mood.className);
-            moodBubble.textContent = mood.emoji;
-            moodBubble.hidden = false;
-            moodBubble.style.animation = 'none';
-            void moodBubble.offsetWidth;
-            moodBubble.style.animation = 'moodBubble .9s ease-out both';
-            window.clearTimeout(moodBubble._hideTimer);
-            moodBubble._hideTimer = window.setTimeout(() => {
-                moodBubble.hidden = true;
-            }, 900);
-            avatar.setAttribute('aria-label', displayName + ' mood: ' + mood.emoji);
-        });
-
-        tile.append(avatar, name, badge, tools, moodBubble);
+        tile.append(avatar, name, badge, tools);
         grid.appendChild(tile);
     }
 
@@ -1556,7 +1491,17 @@ function participantTile(participant) {
     const avatar = tile.querySelector('.avatar');
     if (avatar) {
         avatar.alt = displayName;
-        avatar.src = blobatarUrl(displayName);
+        avatar.dataset.expression = avatar.dataset.expression || 'idle';
+        avatar.src = blobatarUrl(displayName, 96, avatar.dataset.expression);
+        avatar.onclick = event => {
+            event.stopPropagation();
+            const current = avatar.dataset.expression || 'idle';
+            const index = blobatarExpressions.indexOf(current);
+            const next = blobatarExpressions[(index + 1) % blobatarExpressions.length];
+            avatar.dataset.expression = next;
+            avatar.src = blobatarUrl(displayName, 96, next);
+            avatar.setAttribute('aria-label', displayName + ' mood: ' + next);
+        };
         avatar.onerror = () => {
             avatar.onerror = null;
             avatar.removeAttribute('src');
@@ -1881,41 +1826,66 @@ function stopPingMonitor() {
     pingLabel.textContent = 'Ping -- ms';
 }
 
+async async function ensureRemoteScreenShareSubscribed(publication, participant) {
+    if (
+        !publication ||
+        publication.source !== Track.Source.ScreenShare ||
+        participant === room?.localParticipant
+    ) {
+        return;
+    }
+
+    try {
+        if (publication.isEnabled === false) {
+            publication.setEnabled(true);
+        }
+        if (typeof publication.setVideoDimensions === 'function') {
+            publication.setVideoDimensions({ width: 1920, height: 1080 });
+        }
+        if (!publication.isSubscribed) {
+            publication.setSubscribed(true);
+        }
+        console.debug('LiveKit screen share subscription requested:', {
+            identity: participant?.identity,
+            trackSid: publication.trackSid,
+            subscribed: publication.isSubscribed,
+            enabled: publication.isEnabled,
+        });
+    } catch (error) {
+        console.warn('Remote screen share subscribe failed:', {
+            identity: participant?.identity,
+            trackSid: publication.trackSid,
+            error,
+        });
+    }
+}
+
 async function subscribeToRemoteScreenShares() {
     if (!room || room.state !== ConnectionState.Connected) return;
 
     for (const participant of room.remoteParticipants.values()) {
         for (const publication of participant.videoTrackPublications?.values() || []) {
-            if (
-                publication.source === Track.Source.ScreenShare &&
-                !publication.isSubscribed &&
-                !publication.isMuted &&
-                publication.isEnabled !== false
-            ) {
-                try {
-                    await publication.setSubscribed(true);
-                } catch (error) {
-                    console.warn('Remote screen share subscribe retry failed:', {
-                        identity: participant.identity,
-                        trackSid: publication.trackSid,
-                        error,
-                    });
-                }
+            if (publication.source === Track.Source.ScreenShare) {
+                await ensureRemoteScreenShareSubscribed(publication, participant);
             }
         }
     }
 }
 
 function scheduleScreenShareSubscriptionRetries() {
-    if (screenShareRetryTimer) clearTimeout(screenShareRetryTimer);
-    const delays = [0, 250, 900, 2000];
+    screenShareRetryTimers.forEach(timer => clearTimeout(timer));
+    screenShareRetryTimers.clear();
+
+    const delays = [0, 250, 750, 1500, 3000];
 
     delays.forEach(delay => {
-        screenShareRetryTimer = window.setTimeout(() => {
+        const timer = window.setTimeout(() => {
+            screenShareRetryTimers.delete(timer);
             subscribeToRemoteScreenShares().catch(error => {
                 console.warn('Screen share subscription pass failed:', error);
             });
         }, delay);
+        screenShareRetryTimers.add(timer);
     });
 }
 
@@ -2347,8 +2317,12 @@ function roomOptions() {
     const mobile = isMobile();
 
     return new Room({
-        adaptiveStream: true,
-        dynacast: true,
+        // Keep screen-share delivery deterministic. Adaptive stream and dynacast
+        // can pause/reduce video based on element visibility; a meeting UI that
+        // swaps tracks dynamically should not let those optimizations hide a
+        // presentation track.
+        adaptiveStream: false,
+        dynacast: false,
         disconnectOnPageLeave: true,
         singlePeerConnection: true,
         audioCaptureDefaults: {
@@ -2408,6 +2382,16 @@ function setupRoomEvents() {
             }
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+            if (publication?.source === Track.Source.ScreenShare) {
+                if (typeof publication.setEnabled === 'function') publication.setEnabled(true);
+                if (typeof publication.setVideoDimensions === 'function') {
+                    publication.setVideoDimensions({ width: 1920, height: 1080 });
+                }
+                console.debug('LiveKit screen share subscribed:', {
+                    identity: participant?.identity,
+                    trackSid: publication.trackSid,
+                });
+            }
             attachTrack(track, participant, publication);
             renderParticipantVideo(participant);
             if (publication?.source === Track.Source.ScreenShare) {
@@ -2421,19 +2405,11 @@ function setupRoomEvents() {
             participantTile(participant);
             updateBadge(participant);
 
-            // autoSubscribe is enabled, but explicitly subscribing to a newly
-            // published screen track avoids browsers/LiveKit clients getting
-            // stuck with a published-but-unsubscribed presentation track.
             if (
                 participant !== room?.localParticipant &&
-                publication.source === Track.Source.ScreenShare &&
-                !publication.isSubscribed
+                publication.source === Track.Source.ScreenShare
             ) {
-                try {
-                    await publication.setSubscribed(true);
-                } catch (error) {
-                    console.warn('Screen share subscription failed:', error);
-                }
+                await ensureRemoteScreenShareSubscribed(publication, participant);
                 scheduleScreenShareSubscriptionRetries();
             }
 
@@ -2520,16 +2496,22 @@ function setupRoomEvents() {
                 ? [...participant.videoTrackPublications.values()].find(item => item.trackSid === trackSid)
                 : null;
             if (publication?.source === Track.Source.ScreenShare) {
-                try {
-                    await publication.setSubscribed(true);
-                    return;
-                } catch (error) {
-                    console.warn('Screen share resubscribe failed:', error);
-                }
+                await ensureRemoteScreenShareSubscribed(publication, participant);
                 scheduleScreenShareSubscriptionRetries();
+                return;
             }
             if (participant) {
                 setStatus('A participant video could not be loaded. Reconnecting media...', 'error');
+            }
+        })
+        .on(RoomEvent.TrackSubscriptionStatusChanged, (publication, _status, participant) => {
+            if (publication?.source === Track.Source.ScreenShare) {
+                ensureRemoteScreenShareSubscribed(publication, participant);
+            }
+        })
+        .on(RoomEvent.TrackSubscriptionPermissionChanged, (publication, _status, participant) => {
+            if (publication?.source === Track.Source.ScreenShare) {
+                ensureRemoteScreenShareSubscribed(publication, participant);
             }
         })
         .on(RoomEvent.ConnectionStateChanged, state => {
@@ -2547,10 +2529,8 @@ function setupRoomEvents() {
                 setStatus('Connection interrupted. Reconnecting...');
             } else if (state === ConnectionState.Disconnected && !leaving) {
                 stopPingMonitor();
-                if (screenShareRetryTimer) {
-                    clearTimeout(screenShareRetryTimer);
-                    screenShareRetryTimer = null;
-                }
+                screenShareRetryTimers.forEach(timer => clearTimeout(timer));
+                screenShareRetryTimers.clear();
                 reconnecting = false;
                 setStatus('Disconnected from the meeting. Press Join to reconnect.', 'error');
                 controls.hidden = true;
@@ -2583,6 +2563,9 @@ function setupRoomEvents() {
             if (participant) renderParticipant(participant);
         })
         .on(RoomEvent.TrackStreamStateChanged, (publication, _streamState, participant) => {
+            if (publication?.source === Track.Source.ScreenShare && typeof publication.setEnabled === 'function') {
+                publication.setEnabled(true);
+            }
             if (participant) renderParticipantVideo(participant);
         })
         .on(RoomEvent.Disconnected, reason => {
@@ -2822,7 +2805,7 @@ async function toggleScreenShare() {
         if (sharing) {
             await room.localParticipant.setScreenShareEnabled(false);
         } else {
-            await room.localParticipant.setScreenShareEnabled(true, {
+            const published = await room.localParticipant.setScreenShareEnabled(true, {
                 audio: false,
                 contentHint: 'detail',
                 resolution: isMobile()
@@ -2834,8 +2817,17 @@ async function toggleScreenShare() {
                 source: Track.Source.ScreenShare,
                 simulcast: false,
                 videoCodec: 'vp8',
+                backupCodec: { codec: 'h264' },
                 degradationPreference: 'maintain-resolution',
+                screenShareEncoding: {
+                    maxFramerate: 15,
+                    maxBitrate: isMobile() ? 1800000 : 3500000,
+                },
             });
+
+            if (!published?.track) {
+                throw new Error('LiveKit did not publish a screen-share track.');
+            }
         }
 
         renderParticipantVideo(room.localParticipant);
