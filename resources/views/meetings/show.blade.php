@@ -1444,6 +1444,28 @@ function blobatarUrl(name, size = 96, expression = 'idle') {
         '&expression=' + encodeURIComponent(pose);
 }
 
+function cycleBlobatarExpression(participant) {
+    const tile = participantTile(participant);
+    const avatar = tile.querySelector('.avatar');
+    if (!avatar) return;
+
+    const current = avatar.dataset.expression || 'idle';
+    const index = blobatarExpressions.indexOf(current);
+    const next = blobatarExpressions[(index + 1) % blobatarExpressions.length];
+    const displayName = participant.name || participant.identity;
+
+    avatar.dataset.expression = next;
+    avatar.src = blobatarUrl(displayName, 96, next);
+    avatar.setAttribute('aria-label', displayName + ' mood: ' + next);
+
+    const moodButton = tile.querySelector('[data-mood-action]');
+    if (moodButton) {
+        moodButton.textContent = next === 'idle' ? '😊' : '🙂';
+        moodButton.title = 'Change mood (' + next + ')';
+        moodButton.setAttribute('aria-label', 'Change Blobatar mood, currently ' + next);
+    }
+}
+
 function participantTile(participant) {
     const selector = '[data-identity="' + CSS.escape(participant.identity) + '"]';
     let tile = grid.querySelector(selector);
@@ -1470,11 +1492,19 @@ function participantTile(participant) {
 
         const tools = document.createElement('div');
         tools.className = 'tile-tools';
-        tools.innerHTML = '<button type="button" data-zoom-action="out" aria-label="Zoom out">−</button>' +
+        tools.innerHTML = '<button type="button" data-mood-action="next" aria-label="Change Blobatar mood" title="Change mood">😊</button>' +
+            '<button type="button" data-zoom-action="out" aria-label="Zoom out">−</button>' +
             '<span class="tile-zoom-label">100%</span>' +
             '<button type="button" data-zoom-action="in" aria-label="Zoom in">+</button>' +
             '<button type="button" data-zoom-action="reset" aria-label="Reset zoom">Reset</button>';
         tools.addEventListener('click', event => {
+            const moodButton = event.target.closest('[data-mood-action]');
+            if (moodButton) {
+                event.stopPropagation();
+                cycleBlobatarExpression(participant);
+                return;
+            }
+
             const button = event.target.closest('[data-zoom-action]');
             if (!button) return;
             event.stopPropagation();
@@ -1495,12 +1525,7 @@ function participantTile(participant) {
         avatar.src = blobatarUrl(displayName, 96, avatar.dataset.expression);
         avatar.onclick = event => {
             event.stopPropagation();
-            const current = avatar.dataset.expression || 'idle';
-            const index = blobatarExpressions.indexOf(current);
-            const next = blobatarExpressions[(index + 1) % blobatarExpressions.length];
-            avatar.dataset.expression = next;
-            avatar.src = blobatarUrl(displayName, 96, next);
-            avatar.setAttribute('aria-label', displayName + ' mood: ' + next);
+            cycleBlobatarExpression(participant);
         };
         avatar.onerror = () => {
             avatar.onerror = null;
