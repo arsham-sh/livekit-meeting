@@ -3061,10 +3061,7 @@ document.querySelectorAll('[data-doc-command]').forEach(control => {
         const command = control.dataset.docCommand;
         let value = control.dataset.docValue || null;
 
-        if (command === 'createLink') {
-            value = window.prompt('Enter URL:', 'https://');
-            if (!value) return;
-        } else if (control instanceof HTMLInputElement && control.type === 'color') {
+        if (control instanceof HTMLInputElement && control.type === 'color') {
             value = control.value;
         } else if (control instanceof HTMLSelectElement) {
             value = control.value;
