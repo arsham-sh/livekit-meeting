@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 
 class MeetingController extends Controller
 {
+    
     public function create(): View
     {
         return view('meetings.create');
