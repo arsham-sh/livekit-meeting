@@ -628,22 +628,6 @@
             color: #fff;
         }
 
-        .toolbar-spacer {
-            margin-left: auto;
-        }
-
-        .toolbar-close {
-            width: 36px;
-            min-width: 36px;
-            min-height: 36px;
-            padding: 0 !important;
-            display: grid;
-            place-items: center;
-            border-radius: 10px;
-            font-size: 20px !important;
-            line-height: 1;
-        }
-
         .document-toolbar select {
             min-height: 36px;
             padding: 6px 9px;
@@ -983,7 +967,7 @@
         <span class="presentation-live">LIVE</span>
         <span id="presentation-title" class="presentation-title">Screen share</span>
         <button id="presentation-fullscreen" type="button">Fullscreen</button>
-        <button id="presentation-close" class="danger toolbar-close" type="button" aria-label="Close screen share" title="Close">×</button>
+        <button id="presentation-close" class="danger" type="button">Close</button>
     </div>
     <video id="presentation-video" autoplay playsinline></video>
 </section>
@@ -1000,8 +984,7 @@
         <button id="whiteboard-zoom-in" type="button">+</button>
         <button id="whiteboard-reset" type="button">Reset view</button>
         <button id="whiteboard-clear" type="button">Clear</button>
-        <span class="toolbar-spacer"></span>
-        <button id="whiteboard-close" class="toolbar-close" type="button" aria-label="Close whiteboard" title="Close">×</button>
+        <button id="whiteboard-close" type="button">Close</button>
     </div>
     <canvas id="whiteboard-canvas" tabindex="0"></canvas>
 </section>
@@ -1045,12 +1028,10 @@
         <button type="button" data-doc-command="redo" title="Redo">↷</button>
         <input type="color" data-doc-command="foreColor" value="#171717" aria-label="Text color" title="Text color">
         <input type="color" data-doc-command="hiliteColor" value="#fff2a8" aria-label="Highlight color" title="Highlight color">
-        <button type="button" data-doc-command="createLink" title="Insert link">Link</button>
         <button id="document-access-toggle" type="button" hidden>Manage access</button>
         <button id="document-download" type="button">Download Word</button>
         <span id="document-status" class="document-status">View only</span>
-        <span class="toolbar-spacer"></span>
-        <button id="document-close" class="toolbar-close" type="button" aria-label="Close shared document" title="Close">×</button>
+        <button id="document-close" type="button">Close</button>
     </div>
     <div id="document-readonly" class="document-readonly" hidden>
         You can read this document, but the host has not given you edit access.
@@ -1120,7 +1101,6 @@ const controls = document.querySelector('.controls');
 const micButton = document.getElementById('mic');
 const cameraButton = document.getElementById('camera');
 const screenButton = document.getElementById('screen');
-const screenViewButton = document.getElementById('screen-view');
 const leaveButton = document.getElementById('leave');
 const whiteboardToggle = document.getElementById('whiteboard-toggle');
 const whiteboard = document.getElementById('whiteboard');
@@ -1656,6 +1636,16 @@ function participantTile(participant) {
     }
     attachTileZoomGesture(tile, participant);
 
+    if (!tile.dataset.screenClickReady) {
+        tile.dataset.screenClickReady = '1';
+        tile.addEventListener('click', event => {
+            if (event.target.closest('.tile-tools, .screen-focus, .name, .badge')) return;
+            const video = event.target.closest('video');
+            if (!video || video.dataset.source !== Track.Source.ScreenShare) return;
+            openPresentation(participant);
+        });
+    }
+
     return tile;
 }
 
@@ -1813,7 +1803,8 @@ function renderParticipantVideo(participant) {
     const element = track.attach();
     element.autoplay = true;
     element.playsInline = true;
-    element.muted = participant === room?.localParticipant;
+    element.muted = participant === room?.localParticipant || isScreenShare;
+    element.volume = 0;
     element.dataset.trackSid = sid;
     element.dataset.identity = participant.identity;
     element.dataset.source = source;
@@ -1850,10 +1841,6 @@ function syncScreenFocusButton(tile, participant, isScreenShare) {
     }
 }
 
-function openLocalPresentation() {
-    openPresentation(room?.localParticipant || null);
-}
-
 function openPresentation(participant) {
     const publication = participant && currentVideoPublication(participant);
     if (!publication?.track || (publication.source || publication.track.source) !== Track.Source.ScreenShare) return;
@@ -1865,6 +1852,7 @@ function openPresentation(participant) {
     presentationVideo.autoplay = true;
     presentationVideo.playsInline = true;
     presentationVideo.muted = true;
+    presentationVideo.volume = 0;
     presentation.hidden = false;
     presentationVideo.play().catch(() => {});
 }
@@ -2046,9 +2034,6 @@ function updateShareButton() {
     screenButton.textContent = sharing ? 'Stop sharing' : 'Share screen';
     shareIndicator.hidden = !sharing;
 
-    screenViewButton.hidden = !sharing;
-    screenViewButton.disabled = !sharing;
-    screenViewButton.textContent = 'View share';
 }
 
 function detachTrack(track) {
@@ -3033,7 +3018,6 @@ chatForm.addEventListener('submit', sendChatMessage);
 micButton.addEventListener('click', toggleMicrophone);
 cameraButton.addEventListener('click', toggleCamera);
 screenButton.addEventListener('click', toggleScreenShare);
-screenViewButton.addEventListener('click', () => openLocalPresentation());
 leaveButton.addEventListener('click', leave);
 whiteboardToggle.addEventListener('click', () => openWhiteboard(true));
 whiteboardClose.addEventListener('click', () => openWhiteboard(false));
@@ -3070,6 +3054,9 @@ document.querySelectorAll('[data-doc-command]').forEach(control => {
         }
 
         documentEditor.focus();
+        if (['fontName', 'fontSize', 'foreColor', 'hiliteColor'].includes(command)) {
+            document.execCommand('styleWithCSS', false, true);
+        }
         document.execCommand(command, false, value);
         scheduleDocumentSync();
     });
