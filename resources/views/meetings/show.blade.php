@@ -856,6 +856,15 @@
             background: #eeeef0;
         }
 
+        .controls .preview-button {
+            background: linear-gradient(135deg, rgba(124,58,237,.92), rgba(6,182,212,.86));
+            color: #fff;
+            border-color: rgba(165,180,252,.28);
+        }
+        .controls .preview-button:hover {
+            box-shadow: 0 10px 28px rgba(34,211,238,.16);
+        }
+
         .chat-toggle {
             position: fixed;
             z-index: 55;
@@ -1112,6 +1121,127 @@
             }
         }
     
+        /* Signature visual system: restrained glass, luminous accents, crisp hierarchy. */
+        :root {
+            --accent-1: #8b5cf6;
+            --accent-2: #22d3ee;
+            --glass: rgba(16,16,22,.72);
+            --glass-border: rgba(255,255,255,.12);
+            --shadow-soft: 0 18px 60px rgba(0,0,0,.28);
+        }
+        body {
+            background:
+                radial-gradient(circle at 8% 8%, rgba(139,92,246,.16), transparent 24%),
+                radial-gradient(circle at 92% 16%, rgba(34,211,238,.11), transparent 22%),
+                radial-gradient(circle at 50% 100%, rgba(99,102,241,.10), transparent 30%),
+                var(--bg);
+        }
+        header,
+        .controls,
+        .chat-panel,
+        .chat-toggle,
+        .hud-pill {
+            border-color: var(--glass-border);
+            background: var(--glass);
+            box-shadow: var(--shadow-soft);
+        }
+        header::after {
+            content: "";
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            bottom: -1px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(139,92,246,.7), rgba(34,211,238,.6), transparent);
+            opacity: .7;
+        }
+        .room-name {
+            letter-spacing: -.02em;
+        }
+        .room-name::before {
+            content: "●";
+            margin-right: 7px;
+            color: #4ade80;
+            font-size: 8px;
+            vertical-align: middle;
+            text-shadow: 0 0 12px rgba(74,222,128,.8);
+        }
+        .tile {
+            border-radius: 18px;
+            border-color: rgba(255,255,255,.09);
+            box-shadow: 0 14px 44px rgba(0,0,0,.28);
+        }
+        .tile::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: inherit;
+            box-shadow: inset 0 1px rgba(255,255,255,.07);
+        }
+        .tile.screen-share {
+            border-color: rgba(34,211,238,.55);
+            box-shadow: 0 0 0 1px rgba(34,211,238,.08), 0 20px 70px rgba(34,211,238,.10);
+        }
+        .tile.screen-share::before {
+            background: linear-gradient(135deg, rgba(8,47,73,.92), rgba(17,24,39,.88));
+            color: #a5f3fc;
+            border: 1px solid rgba(103,232,249,.18);
+        }
+        .controls {
+            padding: 9px;
+            border-radius: 20px;
+            gap: 8px;
+        }
+        .controls button {
+            min-height: 44px;
+            border: 1px solid rgba(255,255,255,.07);
+            background: linear-gradient(180deg, rgba(39,39,48,.94), rgba(26,26,33,.94));
+            box-shadow: inset 0 1px rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.18);
+        }
+        .controls button:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255,255,255,.16);
+        }
+        .controls #screen-preview,
+        .controls #whiteboard-toggle,
+        .controls #document-toggle {
+            background: linear-gradient(135deg, rgba(79,70,229,.9), rgba(14,116,144,.82));
+            border-color: rgba(165,180,252,.22);
+        }
+        .preview-button {
+            color: #ecfeff;
+        }
+        .chat-toggle {
+            border: 1px solid rgba(255,255,255,.14);
+            background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+            color: #fff;
+        }
+        .chat-header {
+            background: linear-gradient(90deg, rgba(139,92,246,.13), rgba(34,211,238,.06), transparent);
+        }
+        .presentation-bar {
+            background: rgba(8,8,13,.76);
+            border-bottom-color: rgba(255,255,255,.10);
+        }
+        .presentation-live {
+            padding: 5px 8px;
+            border: 1px solid rgba(248,113,113,.22);
+            border-radius: 999px;
+            background: rgba(127,29,29,.28);
+        }
+        .document-toolbar,
+        .whiteboard-toolbar {
+            box-shadow: 0 12px 36px rgba(0,0,0,.12);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+                animation-duration: .01ms !important;
+            }
+        }
+
         /* Visual polish: subtle technical hatch background without interfering with the meeting UI. */
         body::before {
             content: "";
@@ -1338,6 +1468,7 @@
     <button id="mic">Mute</button>
     <button id="camera">Camera off</button>
     <button id="screen">Share screen</button>
+    <button id="screen-preview" class="preview-button" type="button" hidden>Preview</button>
     <button id="whiteboard-toggle" type="button">Whiteboard</button>
     <button id="document-toggle" type="button">Shared doc</button>
     <button id="copy-link" type="button">Copy link</button>
@@ -1368,6 +1499,7 @@ const controls = document.querySelector('.controls');
 const micButton = document.getElementById('mic');
 const cameraButton = document.getElementById('camera');
 const screenButton = document.getElementById('screen');
+const screenPreviewButton = document.getElementById('screen-preview');
 const leaveButton = document.getElementById('leave');
 const whiteboardToggle = document.getElementById('whiteboard-toggle');
 const whiteboard = document.getElementById('whiteboard');
@@ -1994,35 +2126,42 @@ function updateBadge(participant) {
     tile.classList.toggle('camera-off', !!cameraPublication && (cameraPublication.isMuted || cameraPublication.isEnabled === false));
 }
 
+function activeVideoPublication(publication) {
+    return !!publication?.track &&
+        publication.isMuted !== true &&
+        publication.isEnabled !== false;
+}
+
+function currentScreenSharePublication(participant) {
+    const publications = participant?.videoTrackPublications
+        ? [...participant.videoTrackPublications.values()]
+        : [];
+
+    return publications.find(publication =>
+        publication.source === Track.Source.ScreenShare &&
+        activeVideoPublication(publication)
+    ) || null;
+}
+
 function currentVideoPublication(participant) {
     const publications = participant?.videoTrackPublications
         ? [...participant.videoTrackPublications.values()]
         : [];
 
-    // Screen share is a presentation surface, so it always wins over camera
-    // when both are subscribed. This prevents a later camera event from
-    // replacing the shared screen in the participant tile.
-    const active = publication => (
-        publication?.track &&
-        publication.isMuted !== true &&
-        publication.isEnabled !== false
-    );
-
-    const screenShare = publications.find(publication =>
-        publication.source === Track.Source.ScreenShare && active(publication)
-    );
-
-    // Never render the outgoing screen-share track back into the sender's tile.
-    // The sender already has the native browser share preview, and decoding the
-    // same stream again adds avoidable CPU/GPU work and can make the presenter lag.
-    if (participant === room?.localParticipant && screenShare) {
+    // Screen share is a presentation surface, so it wins over camera for
+    // remote participants. The sender's tile deliberately stays on camera
+    // (or the avatar) to avoid decoding its own outgoing screen share.
+    const screenShare = currentScreenSharePublication(participant);
+    if (participant === room?.localParticipant) {
         return publications.find(publication =>
-            publication.source === Track.Source.Camera && active(publication)
+            publication.source === Track.Source.Camera &&
+            activeVideoPublication(publication)
         ) || null;
     }
 
     return screenShare || publications.find(publication =>
-        publication.source === Track.Source.Camera && active(publication)
+        publication.source === Track.Source.Camera &&
+        activeVideoPublication(publication)
     ) || null;
 }
 
@@ -2120,12 +2259,15 @@ function syncScreenFocusButton(tile, participant, isScreenShare) {
 }
 
 function openPresentation(participant) {
-    const publication = participant && currentVideoPublication(participant);
-    if (!publication?.track || (publication.source || publication.track.source) !== Track.Source.ScreenShare) return;
+    const publication = participant && currentScreenSharePublication(participant);
+    if (!publication?.track) return;
 
     closePresentation();
     presentationTrack = { track: publication.track, participant };
-    presentationTitle.textContent = (participant.name || participant.identity) + ' · Screen share';
+    const owner = participant === room?.localParticipant
+        ? 'You'
+        : (participant.name || participant.identity);
+    presentationTitle.textContent = owner + ' · Screen share';
     publication.track.attach(presentationVideo);
     presentationVideo.autoplay = true;
     presentationVideo.playsInline = true;
@@ -2133,6 +2275,18 @@ function openPresentation(participant) {
     presentationVideo.volume = 0;
     presentation.hidden = false;
     presentationVideo.play().catch(() => {});
+}
+
+function openLocalScreenPreview() {
+    if (!room?.localParticipant) return;
+
+    const publication = currentScreenSharePublication(room.localParticipant);
+    if (!publication?.track) {
+        setStatus('Start screen sharing first to preview your shared screen.', 'error');
+        return;
+    }
+
+    openPresentation(room.localParticipant);
 }
 
 function closePresentation() {
@@ -2311,6 +2465,7 @@ function updateShareButton() {
     screenButton.classList.toggle('sharing', sharing);
     screenButton.textContent = sharing ? 'Stop sharing' : 'Share screen';
     shareIndicator.hidden = !sharing;
+    screenPreviewButton.hidden = !sharing;
 
 }
 
@@ -2444,6 +2599,7 @@ function updateButtons() {
     screenButton.classList.toggle('sharing', screenOn);
     screenButton.textContent = screenOn ? 'Stop sharing' : 'Share screen';
     shareIndicator.hidden = !screenOn;
+    screenPreviewButton.hidden = !screenOn;
 
     updateBadge(room.localParticipant);
 }
@@ -3296,6 +3452,7 @@ chatForm.addEventListener('submit', sendChatMessage);
 micButton.addEventListener('click', toggleMicrophone);
 cameraButton.addEventListener('click', toggleCamera);
 screenButton.addEventListener('click', toggleScreenShare);
+screenPreviewButton.addEventListener('click', () => openLocalScreenPreview());
 leaveButton.addEventListener('click', leave);
 whiteboardToggle.addEventListener('click', () => openWhiteboard(true));
 whiteboardClose.addEventListener('click', () => openWhiteboard(false));
