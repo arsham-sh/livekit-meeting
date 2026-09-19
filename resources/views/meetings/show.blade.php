@@ -2336,7 +2336,9 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.TrackSubscriptionFailed, async (trackSid, participant, reason) => {
             console.warn('Track subscription failed:', trackSid, participant?.identity, reason);
-            const publication = participant?.getTrackPublication?.(trackSid);
+            const publication = participant?.videoTrackPublications
+                ? [...participant.videoTrackPublications.values()].find(item => item.trackSid === trackSid)
+                : null;
             if (publication?.source === Track.Source.ScreenShare) {
                 try {
                     await publication.setSubscribed(true);
