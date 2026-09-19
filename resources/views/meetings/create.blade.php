@@ -52,6 +52,60 @@
         }
 
         button:hover { filter: brightness(1.08); }
+    
+        body {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 20% 15%, rgba(99,102,241,.16), transparent 34%),
+                radial-gradient(circle at 82% 84%, rgba(168,85,247,.12), transparent 32%),
+                #09090b;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: -50%;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent 0,
+                    transparent 10px,
+                    rgba(255,255,255,.028) 10px,
+                    rgba(255,255,255,.028) 11px
+                );
+            transform: rotate(.5deg);
+        }
+        main {
+            position: relative;
+            overflow: hidden;
+            background: rgba(21,21,24,.78);
+            border-color: rgba(255,255,255,.10);
+            box-shadow: 0 28px 90px rgba(0,0,0,.42);
+            backdrop-filter: blur(18px) saturate(125%);
+        }
+        main::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,.045), transparent 42%),
+                radial-gradient(circle at 50% 0%, rgba(255,255,255,.045), transparent 48%);
+        }
+        main > * { position: relative; }
+        button {
+            box-shadow: 0 10px 26px rgba(0,0,0,.22);
+            transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 32px rgba(0,0,0,.28);
+        }
+        @media (prefers-reduced-transparency: reduce) {
+            main { backdrop-filter: none; }
+        }
+
     </style>
 </head>
 <body>
