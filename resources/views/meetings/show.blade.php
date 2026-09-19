@@ -186,6 +186,7 @@
             color: #d4d4d8;
         }
         .speaking { outline: 2px solid #fff; outline-offset: -2px; }
+        .avatar[hidden] { display: none !important; }
 
 
         .tile-tools {
@@ -1075,7 +1076,7 @@ function scheduleDocumentSync() {
     clearTimeout(documentSaveTimer);
     documentSaveTimer = setTimeout(() => {
         sendDocumentState();
-    }, 220);
+    }, 35);
 }
 
 function applyDocumentState(html, revision = Date.now()) {
@@ -1287,6 +1288,7 @@ function currentVideoPublication(participant) {
 
 function removeVideoForParticipant(participant) {
     const tile = participantTile(participant);
+    tile.querySelector('.avatar')?.removeAttribute('hidden');
     tile.querySelectorAll('video').forEach(element => element.remove());
 
     for (const [sid, element] of mediaElements.entries()) {
@@ -1317,6 +1319,7 @@ function renderParticipantVideo(participant) {
     const existing = tile.querySelector('video');
 
     if (existing?.dataset.trackSid === sid) {
+        tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
         tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
         applyParticipantZoom(participant);
         return;
@@ -1336,6 +1339,7 @@ function renderParticipantVideo(participant) {
     element.dataset.identity = participant.identity;
     element.dataset.source = source;
 
+    tile.querySelector('.avatar')?.setAttribute('hidden', 'hidden');
     tile.insertBefore(element, tile.querySelector('.avatar'));
     tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
     mediaElements.set(sid, element);
@@ -1641,9 +1645,11 @@ function beginWhiteboardStroke(event) {
         mode: whiteboardMode,
     };
     whiteboardDrawing = stroke;
-    whiteboardLastPublishAt = 0;
+    whiteboardLastPublishAt = performance.now();
+    whiteboardLiveStrokes.set(stroke.id, stroke);
+    redrawWhiteboard();
     whiteboardCanvas.setPointerCapture(event.pointerId);
-    publishWhiteboard({ type: 'stroke-start', stroke }, false);
+    publishWhiteboard({ type: 'stroke-start', stroke }, true);
     event.preventDefault();
 }
 
@@ -1655,7 +1661,7 @@ function moveWhiteboardStroke(event) {
     redrawWhiteboard();
 
     const now = performance.now();
-    if (now - whiteboardLastPublishAt >= 30) {
+    if (now - whiteboardLastPublishAt >= 16) {
         whiteboardLastPublishAt = now;
         publishWhiteboard({
             type: 'stroke-point',
@@ -1673,6 +1679,7 @@ async function endWhiteboardStroke(event) {
     whiteboardDrawing = null;
     whiteboardCanvas.releasePointerCapture?.(event.pointerId);
     whiteboardStrokes.push(stroke);
+    whiteboardLiveStrokes.delete(stroke.id);
     redrawWhiteboard();
     await publishWhiteboard({ type: 'stroke-end', stroke }, true);
     event.preventDefault();
@@ -1910,14 +1917,14 @@ function setupRoomEvents() {
         });
 }
 
-async function connectRoom(serverUrl, token, relayOnly = false) {
+async function connectRoom(serverUrl, token, relayOnly = true) {
     if (!room) throw new Error('LiveKit room is not initialized.');
 
     const connectionOptions = {
         autoSubscribe: true,
         maxRetries: 0,
-        websocketTimeout: 10000,
-        peerConnectionTimeout: relayOnly ? 12000 : 7000,
+        websocketTimeout: 7000,
+        peerConnectionTimeout: relayOnly ? 8000 : 5000,
     };
 
     if (relayOnly) {
@@ -1978,32 +1985,23 @@ async function join() {
         room = roomOptions();
         setupRoomEvents();
 
-        // Pre-warm DNS/TLS and request the token in parallel. Waiting for the
-        // first pre-warm before starting the token request only adds latency.
-        const prewarm = room.prepareConnection(livekitUrl).catch(error => {
-            console.warn('LiveKit pre-warm failed:', error);
-        });
-        const tokenPromise = fetchToken(name);
-
-        const data = await tokenPromise;
+        // Fetch the token first, then pre-warm the exact LiveKit Cloud edge.
+        // The old flow pre-warmed without a token and then repeated the work.
+        const data = await fetchToken(name);
         connectionData = data;
 
-        setStatus('Preparing the realtime connection...');
-        await Promise.allSettled([prewarm]);
-
-        // With LiveKit Cloud, signal/WebSocket connectivity can succeed while
-        // WebRTC ICE fails. Try the normal path first, then immediately retry
-        // through LiveKit's TURN relay instead of waiting through slow region
-        // retries. This is especially important on restrictive/mobile networks.
+        setStatus('Connecting to realtime media...');
         await room.prepareConnection(data.server_url, data.participant_token);
 
         let connectionError = null;
 
+        // Direct ICE has timed out repeatedly in this deployment. Prefer TURN
+        // so restrictive/mobile networks do not wait through failed ICE checks.
         try {
-            await connectRoom(data.server_url, data.participant_token, false);
+            await connectRoom(data.server_url, data.participant_token, true);
         } catch (error) {
             connectionError = error;
-            console.warn('Direct WebRTC connection failed; retrying through TURN:', error);
+            console.warn('TURN connection failed; retrying direct WebRTC:', error);
 
             const failedRoom = room;
             room = null;
@@ -2012,14 +2010,13 @@ async function join() {
             room = roomOptions();
             setupRoomEvents();
 
-            setStatus('Network is restricting direct media. Switching to secure relay...');
-
+            setStatus('Relay connection failed. Trying direct media...');
             await room.prepareConnection(data.server_url, data.participant_token);
-            await connectRoom(data.server_url, data.participant_token, true);
+            await connectRoom(data.server_url, data.participant_token, false);
         }
 
         if (connectionError) {
-            console.info('TURN fallback succeeded after direct connection failure.');
+            console.info('Direct WebRTC fallback succeeded after TURN failed.');
         }
 
         nameInput.disabled = true;
