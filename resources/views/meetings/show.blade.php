@@ -2964,7 +2964,7 @@ async function toggleScreenShare() {
                 resolution: isMobile()
                     ? ScreenSharePresets.h720fps15.resolution
                     : ScreenSharePresets.h1080fps15.resolution,
-                selfBrowserSurface: 'exclude',
+                selfBrowserSurface: 'include',
                 surfaceSwitching: 'include',
             }, {
                 source: Track.Source.ScreenShare,
