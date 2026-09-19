@@ -280,6 +280,116 @@
             margin-right: 4px;
         }
 
+
+        #shared-document {
+            position: fixed;
+            z-index: 85;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background: #f7f7f5;
+            color: #171717;
+        }
+        #shared-document[hidden] { display: none !important; }
+        .document-toolbar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+            background: rgba(255,255,255,.96);
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 3px 18px rgba(0,0,0,.10);
+        }
+        .document-toolbar .document-title {
+            font-weight: 850;
+            margin-right: 5px;
+        }
+        .document-toolbar button {
+            min-height: 36px;
+            padding: 6px 10px;
+            background: #eeeef0;
+            color: #171717;
+            border: 1px solid #d5d5d7;
+        }
+        .document-toolbar button.active { background: #171717; color: #fff; }
+        .document-status {
+            margin-left: auto;
+            color: #666;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        #document-editor {
+            flex: 1;
+            width: min(900px, calc(100% - 28px));
+            margin: 14px auto;
+            padding: 42px 52px;
+            overflow-y: auto;
+            outline: none;
+            background: #fff;
+            border: 1px solid #e2e2e2;
+            border-radius: 6px;
+            box-shadow: 0 12px 35px rgba(0,0,0,.08);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 18px;
+            line-height: 1.65;
+            -webkit-overflow-scrolling: touch;
+        }
+        #document-editor[contenteditable="false"] {
+            background: #fdfdfc;
+            cursor: default;
+        }
+        #document-editor h1, #document-editor h2, #document-editor h3 {
+            line-height: 1.2;
+        }
+        #document-editor blockquote {
+            margin: 1em 0;
+            padding-left: 1em;
+            border-left: 4px solid #bbb;
+            color: #555;
+        }
+        .document-access {
+            position: fixed;
+            z-index: 90;
+            right: 16px;
+            top: 70px;
+            width: min(360px, calc(100vw - 24px));
+            max-height: calc(100dvh - 100px);
+            overflow-y: auto;
+            padding: 12px;
+            background: #151518f5;
+            color: #fff;
+            border: 1px solid #33333b;
+            border-radius: 14px;
+            box-shadow: 0 18px 60px #0009;
+            backdrop-filter: blur(16px);
+        }
+        .document-access h3 { margin: 0 0 5px; font-size: 15px; }
+        .document-access p { margin: 0 0 10px; color: #aaa; font-size: 12px; }
+        .document-access-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 0;
+            border-top: 1px solid #2b2b31;
+        }
+        .document-access-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .document-access-row button { min-height: 32px; padding: 5px 8px; }
+        .document-readonly {
+            padding: 8px 12px;
+            background: #fff4d6;
+            border-bottom: 1px solid #ead7a2;
+            color: #704d00;
+            font: 600 12px system-ui, sans-serif;
+        }
+
         #audio-root {
             position: fixed;
             width: 1px;
@@ -470,6 +580,17 @@
             .controls::-webkit-scrollbar { display: none; }
             .controls button { flex: 1 0 auto; min-width: 78px; }
             .quality { display: none; }
+
+            #document-editor {
+                width: calc(100% - 12px);
+                margin: 7px auto;
+                padding: 28px 20px;
+                font-size: 17px;
+                border-radius: 4px;
+            }
+            .document-status { margin-left: 0; width: 100%; }
+            .document-access { right: 8px; top: 78px; width: calc(100vw - 16px); }
+
             .chat-toggle {
                 right: 10px;
                 bottom: calc(76px + env(safe-area-inset-bottom));
@@ -526,6 +647,35 @@
     <canvas id="whiteboard-canvas" tabindex="0"></canvas>
 </section>
 
+
+<section id="shared-document" hidden aria-label="Shared document">
+    <div class="document-toolbar">
+        <span class="document-title">Shared document</span>
+        <button type="button" data-doc-command="bold"><b>B</b></button>
+        <button type="button" data-doc-command="italic"><i>I</i></button>
+        <button type="button" data-doc-command="underline"><u>U</u></button>
+        <button type="button" data-doc-command="insertUnorderedList">• List</button>
+        <button type="button" data-doc-command="insertOrderedList">1. List</button>
+        <button type="button" data-doc-command="formatBlock" data-doc-value="h2">Heading</button>
+        <button id="document-access-toggle" type="button" hidden>Manage access</button>
+        <button id="document-download" type="button">Download Word</button>
+        <button id="document-close" type="button">Close</button>
+        <span id="document-status" class="document-status">View only</span>
+    </div>
+    <div id="document-readonly" class="document-readonly" hidden>
+        You can read this document, but the host has not given you edit access.
+    </div>
+    <div id="document-editor" contenteditable="false" spellcheck="true">
+        <h1>Meeting notes</h1>
+        <p>Start writing together...</p>
+    </div>
+    <aside id="document-access" class="document-access" hidden>
+        <h3>Document access</h3>
+        <p>Only the host can change who may edit. Changes apply immediately.</p>
+        <div id="document-access-list"></div>
+    </aside>
+</section>
+
 <button id="chat-toggle" class="chat-toggle" hidden type="button" aria-label="Open chat" title="Chat">
     Chat
     <span id="chat-unread" class="chat-unread" hidden>0</span>
@@ -550,6 +700,7 @@
     <button id="camera">Camera off</button>
     <button id="screen">Share screen</button>
     <button id="whiteboard-toggle" type="button">Whiteboard</button>
+    <button id="document-toggle" type="button">Shared doc</button>
     <button id="copy-link" type="button">Copy link</button>
     <button id="fullscreen" type="button">Fullscreen</button>
     <button id="leave">Leave</button>
@@ -615,6 +766,18 @@ const chatEmpty = document.getElementById('chat-empty');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
+
+const documentToggle = document.getElementById('document-toggle');
+const sharedDocument = document.getElementById('shared-document');
+const documentEditor = document.getElementById('document-editor');
+const documentClose = document.getElementById('document-close');
+const documentDownload = document.getElementById('document-download');
+const documentAccessToggle = document.getElementById('document-access-toggle');
+const documentAccess = document.getElementById('document-access');
+const documentAccessList = document.getElementById('document-access-list');
+const documentStatus = document.getElementById('document-status');
+const documentReadonly = document.getElementById('document-readonly');
+
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
 let room = null;
@@ -628,6 +791,19 @@ let lastJoinAttempt = 0;
 let reconnecting = false;
 
 const mediaElements = new Map();
+
+let documentOpen = false;
+let documentCanEdit = false;
+let documentHostIdentity = null;
+let documentHtml = documentEditor.innerHTML;
+let documentRevision = 0;
+let documentSaveTimer = null;
+let documentApplyingRemote = false;
+const documentPermissions = new Map();
+let whiteboardLiveStrokes = new Map();
+let whiteboardStrokeSequence = 0;
+let whiteboardLastPublishAt = 0;
+
 
 function setStatus(message, type = '') {
     status.textContent = message;
@@ -746,6 +922,227 @@ function handleChatData(payload, participant, topic) {
     } catch (error) {
         console.warn('Ignoring invalid chat message:', error);
     }
+}
+
+
+function documentParticipants() {
+    if (!room) return [];
+    return [room.localParticipant, ...room.remoteParticipants.values()]
+        .filter(Boolean)
+        .sort((a, b) => {
+            const at = a.joinedAt?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+            const bt = b.joinedAt?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+            return at - bt || String(a.identity).localeCompare(String(b.identity));
+        });
+}
+
+function electDocumentHost() {
+    const participants = documentParticipants();
+    if (!participants.length) return null;
+
+    const nextHost = participants[0].identity;
+    const changed = documentHostIdentity !== nextHost;
+    documentHostIdentity = nextHost;
+
+    if (changed && isDocumentHost()) {
+        documentPermissions.set(room.localParticipant.identity, true);
+        publishDocumentPacket({
+            type: 'host',
+            hostIdentity: documentHostIdentity,
+            permissions: Object.fromEntries(documentPermissions),
+        });
+        sendDocumentState();
+    }
+
+    updateDocumentPermissionUi();
+    updateDocumentUi();
+    return nextHost;
+}
+
+function isDocumentHost() {
+    return !!room?.localParticipant && documentHostIdentity === room.localParticipant.identity;
+}
+
+function canEditDocument(identity = room?.localParticipant?.identity) {
+    return !!identity && (identity === documentHostIdentity || documentPermissions.get(identity) === true);
+}
+
+function updateDocumentUi() {
+    documentCanEdit = canEditDocument();
+    documentEditor.contentEditable = documentCanEdit ? 'true' : 'false';
+    documentReadonly.hidden = documentCanEdit || !documentOpen;
+    documentStatus.textContent = isDocumentHost()
+        ? 'Host · You can edit'
+        : documentCanEdit
+            ? 'Can edit'
+            : 'View only';
+    documentAccessToggle.hidden = !isDocumentHost();
+}
+
+function updateDocumentPermissionUi() {
+    documentAccessList.replaceChildren();
+    if (!room) return;
+
+    documentParticipants().forEach(participant => {
+        const row = document.createElement('div');
+        row.className = 'document-access-row';
+
+        const label = document.createElement('span');
+        label.className = 'document-access-name';
+        label.textContent = participant.name || participant.identity;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = canEditDocument(participant.identity) ? 'Can edit' : 'View only';
+        button.disabled = !isDocumentHost() || participant.identity === room.localParticipant.identity;
+        button.addEventListener('click', () => {
+            if (!isDocumentHost()) return;
+            const next = !canEditDocument(participant.identity);
+            documentPermissions.set(participant.identity, next);
+            publishDocumentPacket({
+                type: 'permission',
+                identity: participant.identity,
+                canEdit: next,
+            });
+            updateDocumentPermissionUi();
+            if (participant.identity === room.localParticipant.identity) updateDocumentUi();
+        });
+
+        row.append(label, button);
+        documentAccessList.appendChild(row);
+    });
+}
+
+function openSharedDocument(open = true) {
+    documentOpen = open;
+    sharedDocument.hidden = !open;
+    if (!open) {
+        documentAccess.hidden = true;
+        return;
+    }
+
+    electDocumentHost();
+    updateDocumentUi();
+    updateDocumentPermissionUi();
+    if (isDocumentHost()) sendDocumentState();
+
+    requestAnimationFrame(() => {
+        if (documentCanEdit) documentEditor.focus();
+    });
+}
+
+async function publishDocumentPacket(payload, destinationIdentities = undefined) {
+    if (!room || room.state !== ConnectionState.Connected) return;
+    try {
+        await room.localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify(payload)),
+            {
+                reliable: true,
+                topic: 'document-control',
+                ...(destinationIdentities?.length ? { destinationIdentities } : {}),
+            },
+        );
+    } catch (error) {
+        console.warn('Document control sync failed:', error);
+    }
+}
+
+async function sendDocumentState(destinationIdentities = undefined) {
+    if (!room || room.state !== ConnectionState.Connected) return;
+    const html = documentEditor.innerHTML.slice(0, 60000);
+    documentHtml = html;
+    documentRevision = Math.max(documentRevision, Date.now());
+    try {
+        await room.localParticipant.sendText(
+            JSON.stringify({
+                type: 'state',
+                html,
+                revision: documentRevision,
+            }),
+            {
+                topic: 'shared-document',
+                ...(destinationIdentities?.length ? { destinationIdentities } : {}),
+            },
+        );
+    } catch (error) {
+        console.warn('Document state sync failed:', error);
+    }
+}
+
+function scheduleDocumentSync() {
+    if (!documentCanEdit || documentApplyingRemote) return;
+    documentHtml = documentEditor.innerHTML.slice(0, 60000);
+    clearTimeout(documentSaveTimer);
+    documentSaveTimer = setTimeout(() => {
+        sendDocumentState();
+    }, 220);
+}
+
+function applyDocumentState(html, revision = Date.now()) {
+    if (typeof html !== 'string' || html.length > 60000) return;
+    if (revision < documentRevision) return;
+
+    documentRevision = revision;
+    documentHtml = html;
+    documentApplyingRemote = true;
+    documentEditor.innerHTML = html || '<p><br></p>';
+    documentApplyingRemote = false;
+    updateDocumentUi();
+}
+
+function handleDocumentControl(payload, participant) {
+    if (!participant || !payload) return;
+
+    if (payload.type === 'host') {
+        if (!documentHostIdentity || participant.identity === documentHostIdentity) {
+            documentHostIdentity = payload.hostIdentity || documentHostIdentity;
+            if (payload.permissions && typeof payload.permissions === 'object') {
+                Object.entries(payload.permissions).forEach(([identity, canEdit]) => {
+                    documentPermissions.set(identity, canEdit === true);
+                });
+            }
+            documentPermissions.set(documentHostIdentity, true);
+            updateDocumentPermissionUi();
+            updateDocumentUi();
+        }
+        return;
+    }
+
+    if (payload.type === 'permission' && participant.identity === documentHostIdentity) {
+        if (typeof payload.identity === 'string') {
+            documentPermissions.set(payload.identity, payload.canEdit === true);
+            updateDocumentPermissionUi();
+            updateDocumentUi();
+        }
+    }
+}
+
+async function handleDocumentStream(reader, participantInfo) {
+    try {
+        const message = JSON.parse(await reader.readAll());
+        if (message?.type !== 'state' || !participantInfo?.identity) return;
+
+        const senderIsHost = participantInfo.identity === documentHostIdentity;
+        const senderCanEdit = canEditDocument(participantInfo.identity);
+        if (!senderIsHost && !senderCanEdit) return;
+
+        applyDocumentState(message.html, Number(message.revision) || Date.now());
+    } catch (error) {
+        console.warn('Ignoring invalid shared document state:', error);
+    }
+}
+
+function downloadSharedDocument() {
+    const html = '<!doctype html><html><head><meta charset="utf-8"><title>Meeting document</title></head><body>' +
+        documentEditor.innerHTML +
+        '</body></html>';
+    const blob = new Blob([html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'meeting-document.doc';
+    anchor.click();
+    URL.revokeObjectURL(url);
 }
 
 function initials(name) {
@@ -1139,6 +1536,43 @@ function drawStroke(stroke) {
     ctx.restore();
 }
 
+
+function drawStroke(stroke) {
+    const ctx = whiteboardCanvas.getContext('2d');
+    if (!stroke?.points?.length) return;
+    ctx.save();
+    ctx.translate(whiteboardOffsetX, whiteboardOffsetY);
+    ctx.scale(whiteboardZoom, whiteboardZoom);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Number(stroke.size) || 4;
+    ctx.strokeStyle = stroke.mode === 'eraser' ? '#ffffff' : (stroke.color || '#111111');
+    ctx.beginPath();
+    stroke.points.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+    });
+    if (stroke.points.length === 1) ctx.lineTo(stroke.points[0].x + .01, stroke.points[0].y);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawStrokeSegment(stroke, from, to) {
+    const ctx = whiteboardCanvas.getContext('2d');
+    ctx.save();
+    ctx.translate(whiteboardOffsetX, whiteboardOffsetY);
+    ctx.scale(whiteboardZoom, whiteboardZoom);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Number(stroke.size) || 4;
+    ctx.strokeStyle = stroke.mode === 'eraser' ? '#ffffff' : (stroke.color || '#111111');
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.restore();
+}
+
 function redrawWhiteboard() {
     const ctx = whiteboardCanvas.getContext('2d');
     const rect = whiteboardCanvas.getBoundingClientRect();
@@ -1147,46 +1581,69 @@ function redrawWhiteboard() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     whiteboardStrokes.forEach(drawStroke);
+    whiteboardLiveStrokes.forEach(stroke => drawStroke(stroke));
 }
 
-async function publishWhiteboard(payload) {
+async function publishWhiteboard(payload, reliable = false, destinationIdentities = undefined) {
     if (!room || room.state !== ConnectionState.Connected) return;
     try {
         await room.localParticipant.publishData(
             new TextEncoder().encode(JSON.stringify(payload)),
-            { reliable: true, topic: 'whiteboard' },
+            {
+                reliable,
+                topic: 'whiteboard',
+                ...(destinationIdentities?.length ? { destinationIdentities } : {}),
+            },
         );
     } catch (error) {
         console.warn('Whiteboard sync failed:', error);
     }
 }
 
-function setWhiteboardZoom(next) {
-    whiteboardZoom = Math.min(2.5, Math.max(.5, next));
-    whiteboardZoomLabel.textContent = Math.round(whiteboardZoom * 100) + '%';
-    redrawWhiteboard();
-}
-
-function openWhiteboard(open = true) {
-    whiteboardOpen = open;
-    whiteboard.hidden = !open;
-    if (open) {
-        requestAnimationFrame(() => {
-            resizeWhiteboardCanvas();
-            whiteboardCanvas.focus();
-        });
-    }
+function whiteboardStrokeId() {
+    whiteboardStrokeSequence += 1;
+    return room?.localParticipant?.identity + ':' + Date.now() + ':' + whiteboardStrokeSequence;
 }
 
 function handleWhiteboardData(payload, participant, topic) {
     if (topic !== 'whiteboard' || !participant) return;
     try {
         const message = JSON.parse(new TextDecoder().decode(payload));
-        if (message.type === 'stroke' && Array.isArray(message.stroke?.points)) {
-            whiteboardStrokes.push(message.stroke);
+
+        if (message.type === 'snapshot') {
+            if (Array.isArray(message.strokes)) {
+                whiteboardStrokes = message.strokes.slice(-500);
+                whiteboardLiveStrokes.clear();
+                if (whiteboardOpen) redrawWhiteboard();
+            }
+            return;
+        }
+
+        if (message.type === 'stroke-start' && message.stroke) {
+            whiteboardLiveStrokes.set(message.stroke.id, message.stroke);
             if (whiteboardOpen) drawStroke(message.stroke);
-        } else if (message.type === 'clear') {
+            return;
+        }
+
+        if (message.type === 'stroke-point' && message.id && message.point) {
+            const stroke = whiteboardLiveStrokes.get(message.id);
+            if (!stroke) return;
+            const previous = stroke.points[stroke.points.length - 1];
+            stroke.points.push(message.point);
+            if (whiteboardOpen && previous) drawStrokeSegment(stroke, previous, message.point);
+            return;
+        }
+
+        if (message.type === 'stroke-end' && message.stroke) {
+            whiteboardLiveStrokes.delete(message.stroke.id);
+            whiteboardStrokes.push(message.stroke);
+            if (whiteboardOpen) redrawWhiteboard();
+            return;
+        }
+
+        if (message.type === 'clear') {
             whiteboardStrokes = [];
+            whiteboardLiveStrokes.clear();
             if (whiteboardOpen) redrawWhiteboard();
         }
     } catch (error) {
@@ -1196,32 +1653,48 @@ function handleWhiteboardData(payload, participant, topic) {
 
 function beginWhiteboardStroke(event) {
     if (!whiteboardOpen || event.button !== 0) return;
-    whiteboardDrawing = {
+    const stroke = {
+        id: whiteboardStrokeId(),
         points: [whiteboardPoint(event)],
         color: whiteboardColor.value,
         size: Number(whiteboardSize.value),
         mode: whiteboardMode,
     };
+    whiteboardDrawing = stroke;
+    whiteboardLastPublishAt = 0;
     whiteboardCanvas.setPointerCapture(event.pointerId);
+    publishWhiteboard({ type: 'stroke-start', stroke }, false);
     event.preventDefault();
 }
 
 function moveWhiteboardStroke(event) {
     if (!whiteboardDrawing) return;
-    whiteboardDrawing.points.push(whiteboardPoint(event));
+    const point = whiteboardPoint(event);
+    const previous = whiteboardDrawing.points[whiteboardDrawing.points.length - 1];
+    whiteboardDrawing.points.push(point);
     redrawWhiteboard();
-    drawStroke(whiteboardDrawing);
+
+    const now = performance.now();
+    if (now - whiteboardLastPublishAt >= 30) {
+        whiteboardLastPublishAt = now;
+        publishWhiteboard({
+            type: 'stroke-point',
+            id: whiteboardDrawing.id,
+            point,
+        }, false);
+    }
+
     event.preventDefault();
 }
 
 async function endWhiteboardStroke(event) {
     if (!whiteboardDrawing) return;
     const stroke = whiteboardDrawing;
-    whiteboardDrawing = false;
+    whiteboardDrawing = null;
     whiteboardCanvas.releasePointerCapture?.(event.pointerId);
     whiteboardStrokes.push(stroke);
     redrawWhiteboard();
-    await publishWhiteboard({ type: 'stroke', stroke });
+    await publishWhiteboard({ type: 'stroke-end', stroke }, true);
     event.preventDefault();
 }
 
@@ -1292,11 +1765,45 @@ function roomOptions() {
     });
 }
 
+
+function syncNewParticipant(participant) {
+    if (!room || !participant) return;
+    participant.waitUntilActive?.().then(() => {
+        if (!room || room.state !== ConnectionState.Connected) return;
+        if (isDocumentHost()) {
+            sendDocumentState([participant.identity]);
+            publishDocumentPacket({
+                type: 'host',
+                hostIdentity: documentHostIdentity,
+                permissions: Object.fromEntries(documentPermissions),
+            }, [participant.identity]);
+        }
+        if (documentStrokesForSync()) {
+            publishWhiteboard({
+                type: 'snapshot',
+                strokes: whiteboardStrokes.slice(-500),
+            }, true, [participant.identity]);
+        }
+    }).catch(() => {});
+}
+
+function documentStrokesForSync() {
+    return whiteboardStrokes.length > 0;
+}
+
 function setupRoomEvents() {
     room
+        .registerTextStreamHandler('shared-document', handleDocumentStream)
         .on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             handleChatData(payload, participant, topic);
             handleWhiteboardData(payload, participant, topic);
+            if (topic === 'document-control') {
+                try {
+                    handleDocumentControl(JSON.parse(new TextDecoder().decode(payload)), participant);
+                } catch (error) {
+                    console.warn('Ignoring invalid document control message:', error);
+                }
+            }
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
@@ -1317,8 +1824,19 @@ function setupRoomEvents() {
         .on(RoomEvent.ParticipantConnected, participant => {
             renderParticipant(participant);
             updateGridDensity();
+            updateDocumentPermissionUi();
+            syncNewParticipant(participant);
         })
-        .on(RoomEvent.ParticipantDisconnected, removeParticipant)
+        .on(RoomEvent.ParticipantDisconnected, participant => {
+            if (participant?.identity === documentHostIdentity) {
+                documentHostIdentity = null;
+                electDocumentHost();
+            }
+            documentPermissions.delete(participant?.identity);
+            removeParticipant(participant);
+            updateDocumentPermissionUi();
+            updateDocumentUi();
+        })
         .on(RoomEvent.LocalTrackPublished, publication => {
             if (publication.track) attachTrack(publication.track, room.localParticipant, publication);
             renderParticipantVideo(room.localParticipant);
@@ -1367,6 +1885,8 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.ConnectionStateChanged, state => {
             if (state === ConnectionState.Connected) {
+                electDocumentHost();
+                updateDocumentPermissionUi();
                 reconnecting = false;
                 setStatus('Connected as ' + nameInput.value.trim(), 'good');
                 renderAllParticipants();
@@ -1536,6 +2056,8 @@ async function join() {
         chatToggle.hidden = false;
 
         renderAllParticipants();
+        electDocumentHost();
+        updateDocumentPermissionUi();
         setStatus('Connected. Starting camera and microphone...', 'good');
 
         await Promise.allSettled([
@@ -1578,6 +2100,7 @@ async function join() {
         room = null;
         clearMedia();
         openWhiteboard(false);
+        openSharedDocument(false);
 
         if (failedRoom) {
             await failedRoom.disconnect().catch(() => {});
@@ -1697,6 +2220,7 @@ async function leave() {
 
     clearMedia();
     openWhiteboard(false);
+    openSharedDocument(false);
     chatToggle.hidden = true;
     setChatOpen(false);
     location.href = '/';
@@ -1712,6 +2236,30 @@ screenButton.addEventListener('click', toggleScreenShare);
 leaveButton.addEventListener('click', leave);
 whiteboardToggle.addEventListener('click', () => openWhiteboard(true));
 whiteboardClose.addEventListener('click', () => openWhiteboard(false));
+
+documentToggle.addEventListener('click', () => openSharedDocument(true));
+documentClose.addEventListener('click', () => openSharedDocument(false));
+documentAccessToggle.addEventListener('click', () => {
+    if (!isDocumentHost()) return;
+    documentAccess.hidden = !documentAccess.hidden;
+    updateDocumentPermissionUi();
+});
+documentEditor.addEventListener('input', scheduleDocumentSync);
+documentEditor.addEventListener('paste', () => {
+    setTimeout(scheduleDocumentSync, 0);
+});
+document.querySelectorAll('[data-doc-command]').forEach(button => {
+    button.addEventListener('click', () => {
+        if (!documentCanEdit) return;
+        documentEditor.focus();
+        const command = button.dataset.docCommand;
+        const value = button.dataset.docValue;
+        document.execCommand(command, false, value || null);
+        scheduleDocumentSync();
+    });
+});
+documentDownload.addEventListener('click', downloadSharedDocument);
+
 copyLinkButton.addEventListener('click', async () => {
     try {
         await navigator.clipboard.writeText(location.href);
@@ -1752,8 +2300,9 @@ whiteboardReset.addEventListener('click', () => {
 });
 whiteboardClear.addEventListener('click', async () => {
     whiteboardStrokes = [];
+    whiteboardLiveStrokes.clear();
     redrawWhiteboard();
-    await publishWhiteboard({ type: 'clear' });
+    await publishWhiteboard({ type: 'clear' }, true);
 });
 whiteboardCanvas.addEventListener('pointerdown', beginWhiteboardStroke);
 whiteboardCanvas.addEventListener('pointermove', moveWhiteboardStroke);
