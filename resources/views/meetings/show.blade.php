@@ -2492,10 +2492,16 @@ function setupRoomEvents() {
                     ?.classList.add('speaking');
             });
         })
-        .on(RoomEvent.ConnectionQualityChanged, (connectionQuality, participant) => {
+        .on(RoomEvent.ConnectionQualityChanged, (_connectionQuality, participant) => {
             if (participant === room?.localParticipant) {
-                quality.textContent = 'Connection: ' + connectionQuality;
                 updateNetworkHud();
+                updatePingHud();
+            }
+        })
+        .on(RoomEvent.ParticipantActive, participant => {
+            if (participant) {
+                renderParticipant(participant);
+                scheduleScreenShareSubscriptionRetries();
             }
         })
         .on(RoomEvent.AudioPlaybackStatusChanged, () => {
