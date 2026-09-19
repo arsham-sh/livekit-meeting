@@ -443,6 +443,17 @@
             font-weight: 850;
             margin-right: 5px;
         }
+        .document-tool-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding-right: 8px;
+            margin-right: 2px;
+            border-right: 1px solid #e1e1e3;
+        }
+        .document-tool-group:last-of-type {
+            border-right: 0;
+        }
         .document-toolbar button {
             min-height: 36px;
             padding: 6px 10px;
@@ -1012,41 +1023,49 @@
 <section id="shared-document" hidden aria-label="Shared document">
     <div class="document-toolbar">
         <span class="document-title">Shared document</span>
-        <select data-doc-command="formatBlock" aria-label="Text style" title="Text style">
-            <option value="p">Paragraph</option>
-            <option value="h1">Title</option>
-            <option value="h2">Heading 1</option>
-            <option value="h3">Heading 2</option>
-            <option value="blockquote">Quote</option>
-        </select>
-        <select data-doc-command="fontName" aria-label="Font" title="Font">
-            <option value="Georgia">Georgia</option>
-            <option value="Arial">Arial</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Courier New">Monospace</option>
-        </select>
-        <select data-doc-command="fontSize" aria-label="Text size" title="Text size">
-            <option value="3">Normal</option>
-            <option value="1">Small</option>
-            <option value="4">Large</option>
-            <option value="5">Huge</option>
-        </select>
-        <button type="button" data-doc-command="bold" title="Bold"><b>B</b></button>
-        <button type="button" data-doc-command="italic" title="Italic"><i>I</i></button>
-        <button type="button" data-doc-command="underline" title="Underline"><u>U</u></button>
-        <button type="button" data-doc-command="strikeThrough" title="Strikethrough"><s>S</s></button>
-        <button type="button" data-doc-command="removeFormat" title="Clear formatting">Clear format</button>
-        <button type="button" data-doc-command="justifyLeft" title="Align left">≡ Left</button>
-        <button type="button" data-doc-command="justifyCenter" title="Align center">≡ Center</button>
-        <button type="button" data-doc-command="justifyRight" title="Align right">≡ Right</button>
-        <button type="button" data-doc-command="insertUnorderedList" title="Bulleted list">• List</button>
-        <button type="button" data-doc-command="insertOrderedList" title="Numbered list">1. List</button>
-        <button type="button" data-doc-command="outdent" title="Decrease indent">Outdent</button>
-        <button type="button" data-doc-command="indent" title="Increase indent">Indent</button>
-        <button type="button" data-doc-command="undo" title="Undo">↶</button>
-        <button type="button" data-doc-command="redo" title="Redo">↷</button>
-        <input type="color" data-doc-command="foreColor" value="#171717" aria-label="Text color" title="Text color">
-        <input type="color" data-doc-command="hiliteColor" value="#fff2a8" aria-label="Highlight color" title="Highlight color">
+        <span class="document-tool-group" aria-label="Text style">
+            <select data-doc-command="formatBlock" aria-label="Text style" title="Text style">
+                <option value="p">Paragraph</option>
+                <option value="h1">Title</option>
+                <option value="h2">Heading 1</option>
+                <option value="h3">Heading 2</option>
+                <option value="blockquote">Quote</option>
+            </select>
+            <select data-doc-command="fontName" aria-label="Font" title="Font">
+                <option value="Georgia">Georgia</option>
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Monospace</option>
+            </select>
+            <select data-doc-command="fontSize" aria-label="Text size" title="Text size">
+                <option value="3">Normal</option>
+                <option value="1">Small</option>
+                <option value="4">Large</option>
+                <option value="5">Huge</option>
+            </select>
+        </span>
+        <span class="document-tool-group" aria-label="Formatting">
+            <button type="button" data-doc-command="bold" title="Bold"><b>B</b></button>
+            <button type="button" data-doc-command="italic" title="Italic"><i>I</i></button>
+            <button type="button" data-doc-command="underline" title="Underline"><u>U</u></button>
+            <button type="button" data-doc-command="strikeThrough" title="Strikethrough"><s>S</s></button>
+            <button type="button" data-doc-command="removeFormat" title="Clear formatting">Clear</button>
+        </span>
+        <span class="document-tool-group" aria-label="Alignment and lists">
+            <button type="button" data-doc-command="justifyLeft" title="Align left">≡ Left</button>
+            <button type="button" data-doc-command="justifyCenter" title="Align center">≡ Center</button>
+            <button type="button" data-doc-command="justifyRight" title="Align right">≡ Right</button>
+            <button type="button" data-doc-command="insertUnorderedList" title="Bulleted list">• List</button>
+            <button type="button" data-doc-command="insertOrderedList" title="Numbered list">1. List</button>
+            <button type="button" data-doc-command="outdent" title="Decrease indent">Outdent</button>
+            <button type="button" data-doc-command="indent" title="Increase indent">Indent</button>
+        </span>
+        <span class="document-tool-group" aria-label="History and colors">
+            <button type="button" data-doc-command="undo" title="Undo">↶</button>
+            <button type="button" data-doc-command="redo" title="Redo">↷</button>
+            <input type="color" data-doc-command="foreColor" value="#171717" aria-label="Text color" title="Text color">
+            <input type="color" data-doc-command="hiliteColor" value="#fff2a8" aria-label="Highlight color" title="Highlight color">
+        </span>
         <button id="document-access-toggle" type="button" hidden>Manage access</button>
         <button id="document-download" type="button">Download Word</button>
         <span id="document-status" class="document-status">View only</span>
