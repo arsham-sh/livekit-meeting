@@ -2091,7 +2091,6 @@ function renderParticipantVideo(participant) {
     tile.insertBefore(element, tile.querySelector('.avatar'));
     tile.classList.remove('no-video');
     tile.classList.toggle('screen-share', isScreenShare);
-    tile.classList.toggle('local-screen-share', isScreenShare && participant === room?.localParticipant);
     syncScreenFocusButton(tile, participant, isScreenShare);
     mediaElements.set(sid, element);
     applyParticipantZoom(participant);
