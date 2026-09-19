@@ -8,7 +8,10 @@
     <style>
         :root {
             color-scheme: dark;
-            --bg: #09090b;
+            --bg: #07070a;
+            --bg-glow: #111827;
+            --surface: rgba(20, 20, 25, .82);
+            --surface-strong: rgba(27, 27, 34, .94);
             --panel: #151518;
             --panel-2: #1d1d22;
             --text: #f5f5f5;
@@ -23,7 +26,10 @@
         body {
             min-height: 100dvh;
             overflow: hidden;
-            background: var(--bg);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(59, 130, 246, .10), transparent 28%),
+                radial-gradient(circle at 85% 100%, rgba(139, 92, 246, .08), transparent 30%),
+                var(--bg);
             color: var(--text);
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -127,13 +133,20 @@
             place-items: center;
             border: 1px solid #222228;
             contain: layout paint;
+            box-shadow: 0 8px 30px rgba(0,0,0,.22);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
+        .tile:hover { border-color: #3a3a44; }
+        .tile.zoomed { z-index: 8; box-shadow: 0 20px 60px rgba(0,0,0,.55); }
         .tile video {
             display: block;
             width: 100%;
             height: 100%;
             object-fit: cover;
             background: #050505;
+            transform-origin: center center;
+            will-change: transform;
+            transition: transform .18s ease;
         }
         .tile.screen-share video { object-fit: contain; }
         .avatar {
@@ -173,6 +186,99 @@
             color: #d4d4d8;
         }
         .speaking { outline: 2px solid #fff; outline-offset: -2px; }
+
+
+        .tile-tools {
+            position: absolute;
+            z-index: 6;
+            top: 8px;
+            left: 8px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity .15s ease;
+        }
+        .tile:hover .tile-tools,
+        .tile.zoomed .tile-tools { opacity: 1; }
+        .tile-tools button {
+            min-width: 30px;
+            min-height: 30px;
+            width: 30px;
+            padding: 0;
+            border-radius: 8px;
+            background: rgba(0,0,0,.68);
+            border: 1px solid rgba(255,255,255,.12);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 800;
+        }
+        .tile-zoom-label {
+            min-width: 42px;
+            display: grid;
+            place-items: center;
+            padding: 0 6px;
+            border-radius: 8px;
+            background: rgba(0,0,0,.68);
+            font-size: 11px;
+            color: #ddd;
+        }
+
+        #whiteboard {
+            position: fixed;
+            z-index: 80;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background: #f8f8f7;
+            color: #111;
+        }
+        #whiteboard[hidden] { display: none !important; }
+        .whiteboard-toolbar {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+            background: rgba(255,255,255,.94);
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 3px 18px rgba(0,0,0,.10);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .whiteboard-toolbar button {
+            min-height: 38px;
+            padding: 7px 11px;
+            background: #eeeef0;
+            color: #111;
+            border: 1px solid #d6d6d8;
+            white-space: nowrap;
+        }
+        .whiteboard-toolbar button.active { background: #111; color: #fff; }
+        .whiteboard-toolbar input[type="color"] {
+            width: 38px;
+            min-height: 38px;
+            padding: 3px;
+            border-radius: 9px;
+        }
+        .whiteboard-toolbar input[type="range"] { width: 100px; }
+        #whiteboard-canvas {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+            cursor: crosshair;
+            background-color: #fff;
+            background-image:
+                linear-gradient(#e8e8e8 1px, transparent 1px),
+                linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .whiteboard-title {
+            font-weight: 850;
+            margin-right: 4px;
+        }
 
         #audio-root {
             position: fixed;
@@ -347,6 +453,9 @@
             .avatar { width: 48px; height: 48px; font-size: 19px; }
             .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 4px 6px; font-size: 11px; }
             .badge { right: 6px; top: 6px; padding: 4px 6px; font-size: 10px; }
+            .tile-tools { opacity: 1; top: 6px; left: 6px; }
+            .tile-tools button { min-width: 28px; width: 28px; min-height: 28px; font-size: 12px; }
+            .tile-zoom-label { display: none; }
             .controls {
                 left: 10px;
                 right: 10px;
@@ -400,6 +509,23 @@
 <div id="grid"></div>
 <div id="audio-root" aria-hidden="true"></div>
 
+<section id="whiteboard" hidden aria-label="Collaborative whiteboard">
+    <div class="whiteboard-toolbar">
+        <span class="whiteboard-title">Whiteboard</span>
+        <button id="whiteboard-pen" class="active" type="button">Pen</button>
+        <button id="whiteboard-eraser" type="button">Eraser</button>
+        <input id="whiteboard-color" type="color" value="#111111" aria-label="Pen color">
+        <input id="whiteboard-size" type="range" min="1" max="32" value="4" aria-label="Brush size">
+        <button id="whiteboard-zoom-out" type="button">−</button>
+        <span id="whiteboard-zoom-label">100%</span>
+        <button id="whiteboard-zoom-in" type="button">+</button>
+        <button id="whiteboard-reset" type="button">Reset view</button>
+        <button id="whiteboard-clear" type="button">Clear</button>
+        <button id="whiteboard-close" type="button">Close</button>
+    </div>
+    <canvas id="whiteboard-canvas" tabindex="0"></canvas>
+</section>
+
 <button id="chat-toggle" class="chat-toggle" hidden type="button" aria-label="Open chat" title="Chat">
     Chat
     <span id="chat-unread" class="chat-unread" hidden>0</span>
@@ -423,7 +549,11 @@
     <button id="mic">Mute</button>
     <button id="camera">Camera off</button>
     <button id="screen">Share screen</button>
+    <button id="whiteboard-toggle" type="button">Whiteboard</button>
+    <button id="copy-link" type="button">Copy link</button>
+    <button id="fullscreen" type="button">Fullscreen</button>
     <button id="leave">Leave</button>
+    <span id="participant-count" class="quality">1 participant</span>
     <span id="quality" class="quality"></span>
 </div>
 
@@ -450,6 +580,22 @@ const micButton = document.getElementById('mic');
 const cameraButton = document.getElementById('camera');
 const screenButton = document.getElementById('screen');
 const leaveButton = document.getElementById('leave');
+const whiteboardToggle = document.getElementById('whiteboard-toggle');
+const whiteboard = document.getElementById('whiteboard');
+const whiteboardCanvas = document.getElementById('whiteboard-canvas');
+const whiteboardPen = document.getElementById('whiteboard-pen');
+const whiteboardEraser = document.getElementById('whiteboard-eraser');
+const whiteboardColor = document.getElementById('whiteboard-color');
+const whiteboardSize = document.getElementById('whiteboard-size');
+const whiteboardZoomOut = document.getElementById('whiteboard-zoom-out');
+const whiteboardZoomIn = document.getElementById('whiteboard-zoom-in');
+const whiteboardZoomLabel = document.getElementById('whiteboard-zoom-label');
+const whiteboardReset = document.getElementById('whiteboard-reset');
+const whiteboardClear = document.getElementById('whiteboard-clear');
+const whiteboardClose = document.getElementById('whiteboard-close');
+const copyLinkButton = document.getElementById('copy-link');
+const fullscreenButton = document.getElementById('fullscreen');
+const participantCount = document.getElementById('participant-count');
 const quality = document.getElementById('quality');
 const chatToggle = document.getElementById('chat-toggle');
 const chatUnread = document.getElementById('chat-unread');
@@ -620,19 +766,92 @@ function participantTile(participant) {
         const badge = document.createElement('span');
         badge.className = 'badge';
 
-        tile.append(avatar, name, badge);
+        const tools = document.createElement('div');
+        tools.className = 'tile-tools';
+        tools.innerHTML = '<button type="button" data-zoom-action="out" aria-label="Zoom out">−</button>' +
+            '<span class="tile-zoom-label">100%</span>' +
+            '<button type="button" data-zoom-action="in" aria-label="Zoom in">+</button>' +
+            '<button type="button" data-zoom-action="reset" aria-label="Reset zoom">Reset</button>';
+        tools.addEventListener('click', event => {
+            const button = event.target.closest('[data-zoom-action]');
+            if (!button) return;
+            event.stopPropagation();
+            changeParticipantZoom(participant.identity, button.dataset.zoomAction);
+        });
+
+        tile.append(avatar, name, badge, tools);
         grid.appendChild(tile);
     }
 
     const displayName = participant.name || participant.identity;
     tile.querySelector('.name').textContent = displayName;
     tile.querySelector('.avatar').textContent = initials(displayName);
+    attachTileZoomGesture(tile, participant);
 
     return tile;
 }
 
+
+function participantZoom(identity) {
+    return zoomLevels.get(identity) || 1;
+}
+
+function applyParticipantZoom(participant) {
+    const tile = participantTile(participant);
+    const video = tile.querySelector('video');
+    if (!video) return;
+
+    const zoom = participantZoom(participant.identity);
+    video.style.transform = 'scale(' + zoom + ')';
+    tile.classList.toggle('zoomed', zoom > 1);
+    const label = tile.querySelector('.tile-zoom-label');
+    if (label) label.textContent = Math.round(zoom * 100) + '%';
+}
+
+function changeParticipantZoom(identity, action) {
+    const current = participantZoom(identity);
+    const next = action === 'in'
+        ? Math.min(3, current + 0.25)
+        : action === 'out'
+            ? Math.max(1, current - 0.25)
+            : 1;
+
+    zoomLevels.set(identity, next);
+    const tile = grid.querySelector('[data-identity="' + CSS.escape(identity) + '"]');
+    const video = tile?.querySelector('video');
+    if (video) video.style.transform = 'scale(' + next + ')';
+    tile?.classList.toggle('zoomed', next > 1);
+    const label = tile?.querySelector('.tile-zoom-label');
+    if (label) label.textContent = Math.round(next * 100) + '%';
+}
+
+function attachTileZoomGesture(tile, participant) {
+    if (tile.dataset.zoomGestureReady) return;
+    tile.dataset.zoomGestureReady = '1';
+
+    let lastTap = 0;
+    tile.addEventListener('dblclick', event => {
+        if (event.target.closest('.tile-tools')) return;
+        const next = participantZoom(participant.identity) > 1 ? 1 : 1.5;
+        zoomLevels.set(participant.identity, next);
+        applyParticipantZoom(participant);
+    });
+    tile.addEventListener('touchend', event => {
+        if (event.target.closest('.tile-tools')) return;
+        const now = Date.now();
+        if (now - lastTap < 280) {
+            event.preventDefault();
+            const next = participantZoom(participant.identity) > 1 ? 1 : 1.5;
+            zoomLevels.set(participant.identity, next);
+            applyParticipantZoom(participant);
+        }
+        lastTap = now;
+    }, { passive: false });
+}
+
 function updateGridDensity() {
     const count = grid.querySelectorAll('.tile').length;
+    participantCount.textContent = count + (count === 1 ? ' participant' : ' participants');
     grid.classList.toggle('dense', count >= 13);
     grid.classList.toggle('compact', count >= 7 && count < 13);
 }
@@ -693,6 +912,7 @@ function renderParticipantVideo(participant) {
 
     if (existing?.dataset.trackSid === sid) {
         tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
+        applyParticipantZoom(participant);
         return;
     }
 
@@ -713,6 +933,7 @@ function renderParticipantVideo(participant) {
     tile.insertBefore(element, tile.querySelector('.avatar'));
     tile.classList.toggle('screen-share', source === Track.Source.ScreenShare);
     mediaElements.set(sid, element);
+    applyParticipantZoom(participant);
     updateGridDensity();
 }
 
@@ -760,6 +981,7 @@ function attachTrack(track, participant, publication) {
     }
 
     updateBadge(participant);
+    applyParticipantZoom(participant);
 }
 
 function removeParticipant(participant) {
@@ -860,6 +1082,140 @@ async function unlockAudio() {
     }
 }
 
+
+function resizeWhiteboardCanvas() {
+    const rect = whiteboardCanvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const old = whiteboardCanvas.width ? whiteboardCanvas.toDataURL() : null;
+    whiteboardCanvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    whiteboardCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    const ctx = whiteboardCanvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (old) {
+        const image = new Image();
+        image.onload = () => {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.drawImage(image, 0, 0, rect.width, rect.height);
+        };
+        image.src = old;
+    }
+    redrawWhiteboard();
+}
+
+function whiteboardPoint(event) {
+    const rect = whiteboardCanvas.getBoundingClientRect();
+    return {
+        x: (event.clientX - rect.left - whiteboardOffsetX) / whiteboardZoom,
+        y: (event.clientY - rect.top - whiteboardOffsetY) / whiteboardZoom,
+    };
+}
+
+function drawStroke(stroke) {
+    const ctx = whiteboardCanvas.getContext('2d');
+    if (!stroke?.points?.length) return;
+    ctx.save();
+    ctx.translate(whiteboardOffsetX, whiteboardOffsetY);
+    ctx.scale(whiteboardZoom, whiteboardZoom);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Number(stroke.size) || 4;
+    ctx.strokeStyle = stroke.mode === 'eraser' ? '#ffffff' : (stroke.color || '#111111');
+    ctx.beginPath();
+    stroke.points.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+    });
+    if (stroke.points.length === 1) ctx.lineTo(stroke.points[0].x + .01, stroke.points[0].y);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function redrawWhiteboard() {
+    const ctx = whiteboardCanvas.getContext('2d');
+    const rect = whiteboardCanvas.getBoundingClientRect();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    whiteboardStrokes.forEach(drawStroke);
+}
+
+async function publishWhiteboard(payload) {
+    if (!room || room.state !== ConnectionState.Connected) return;
+    try {
+        await room.localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify(payload)),
+            { reliable: true, topic: 'whiteboard' },
+        );
+    } catch (error) {
+        console.warn('Whiteboard sync failed:', error);
+    }
+}
+
+function setWhiteboardZoom(next) {
+    whiteboardZoom = Math.min(2.5, Math.max(.5, next));
+    whiteboardZoomLabel.textContent = Math.round(whiteboardZoom * 100) + '%';
+    redrawWhiteboard();
+}
+
+function openWhiteboard(open = true) {
+    whiteboardOpen = open;
+    whiteboard.hidden = !open;
+    if (open) {
+        requestAnimationFrame(() => {
+            resizeWhiteboardCanvas();
+            whiteboardCanvas.focus();
+        });
+    }
+}
+
+function handleWhiteboardData(payload, participant, topic) {
+    if (topic !== 'whiteboard' || !participant) return;
+    try {
+        const message = JSON.parse(new TextDecoder().decode(payload));
+        if (message.type === 'stroke' && Array.isArray(message.stroke?.points)) {
+            whiteboardStrokes.push(message.stroke);
+            if (whiteboardOpen) drawStroke(message.stroke);
+        } else if (message.type === 'clear') {
+            whiteboardStrokes = [];
+            if (whiteboardOpen) redrawWhiteboard();
+        }
+    } catch (error) {
+        console.warn('Ignoring invalid whiteboard message:', error);
+    }
+}
+
+function beginWhiteboardStroke(event) {
+    if (!whiteboardOpen || event.button !== 0) return;
+    whiteboardDrawing = {
+        points: [whiteboardPoint(event)],
+        color: whiteboardColor.value,
+        size: Number(whiteboardSize.value),
+        mode: whiteboardMode,
+    };
+    whiteboardCanvas.setPointerCapture(event.pointerId);
+    event.preventDefault();
+}
+
+function moveWhiteboardStroke(event) {
+    if (!whiteboardDrawing) return;
+    whiteboardDrawing.points.push(whiteboardPoint(event));
+    redrawWhiteboard();
+    drawStroke(whiteboardDrawing);
+    event.preventDefault();
+}
+
+async function endWhiteboardStroke(event) {
+    if (!whiteboardDrawing) return;
+    const stroke = whiteboardDrawing;
+    whiteboardDrawing = false;
+    whiteboardCanvas.releasePointerCapture?.(event.pointerId);
+    whiteboardStrokes.push(stroke);
+    redrawWhiteboard();
+    await publishWhiteboard({ type: 'stroke', stroke });
+    event.preventDefault();
+}
+
 async function fetchToken(name) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
@@ -931,6 +1287,7 @@ function setupRoomEvents() {
     room
         .on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
             handleChatData(payload, participant, topic);
+            handleWhiteboardData(payload, participant, topic);
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
             attachTrack(track, participant, publication);
@@ -1144,6 +1501,8 @@ async function join() {
         const failedRoom = room;
         room = null;
         clearMedia();
+        openWhiteboard(false);
+        openWhiteboard(false);
 
         if (failedRoom) {
             await failedRoom.disconnect().catch(() => {});
@@ -1262,6 +1621,7 @@ async function leave() {
     }
 
     clearMedia();
+    openWhiteboard(false);
     chatToggle.hidden = true;
     setChatOpen(false);
     location.href = '/';
@@ -1275,6 +1635,58 @@ micButton.addEventListener('click', toggleMicrophone);
 cameraButton.addEventListener('click', toggleCamera);
 screenButton.addEventListener('click', toggleScreenShare);
 leaveButton.addEventListener('click', leave);
+whiteboardToggle.addEventListener('click', () => openWhiteboard(true));
+whiteboardClose.addEventListener('click', () => openWhiteboard(false));
+copyLinkButton.addEventListener('click', async () => {
+    try {
+        await navigator.clipboard.writeText(location.href);
+        copyLinkButton.textContent = 'Copied';
+        setTimeout(() => copyLinkButton.textContent = 'Copy link', 1400);
+    } catch {
+        setStatus('Copy failed. Copy the address from your browser.', 'error');
+    }
+});
+fullscreenButton.addEventListener('click', async () => {
+    try {
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+        }
+    } catch (error) {
+        console.warn('Fullscreen failed:', error);
+    }
+});
+whiteboardPen.addEventListener('click', () => {
+    whiteboardMode = 'pen';
+    whiteboardPen.classList.add('active');
+    whiteboardEraser.classList.remove('active');
+});
+whiteboardEraser.addEventListener('click', () => {
+    whiteboardMode = 'eraser';
+    whiteboardEraser.classList.add('active');
+    whiteboardPen.classList.remove('active');
+});
+whiteboardZoomIn.addEventListener('click', () => setWhiteboardZoom(whiteboardZoom + .25));
+whiteboardZoomOut.addEventListener('click', () => setWhiteboardZoom(whiteboardZoom - .25));
+whiteboardReset.addEventListener('click', () => {
+    whiteboardZoom = 1;
+    whiteboardOffsetX = 0;
+    whiteboardOffsetY = 0;
+    setWhiteboardZoom(1);
+});
+whiteboardClear.addEventListener('click', async () => {
+    whiteboardStrokes = [];
+    redrawWhiteboard();
+    await publishWhiteboard({ type: 'clear' });
+});
+whiteboardCanvas.addEventListener('pointerdown', beginWhiteboardStroke);
+whiteboardCanvas.addEventListener('pointermove', moveWhiteboardStroke);
+whiteboardCanvas.addEventListener('pointerup', endWhiteboardStroke);
+whiteboardCanvas.addEventListener('pointercancel', endWhiteboardStroke);
+window.addEventListener('resize', () => {
+    if (whiteboardOpen) resizeWhiteboardCanvas();
+});
 
 nameInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
@@ -1306,6 +1718,10 @@ window.addEventListener('online', () => {
 
 window.addEventListener('offline', () => {
     if (room) setStatus('Internet connection lost. Waiting for network...', 'error');
+});
+
+document.addEventListener('fullscreenchange', () => {
+    fullscreenButton.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
 });
 </script>
 </body>
