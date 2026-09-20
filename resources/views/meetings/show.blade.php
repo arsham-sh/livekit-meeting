@@ -451,30 +451,6 @@
             border-bottom: 1px solid #d9d9dc;
             box-shadow: 0 10px 30px rgba(20,20,30,.12);
         }
-        .document-brand {
-            flex: 0 0 auto;
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            min-width: 168px;
-            padding-right: 10px;
-            border-right: 1px solid #dedee1;
-        }
-        .document-brand-icon {
-            width: 34px;
-            height: 34px;
-            display: grid;
-            place-items: center;
-            border-radius: 10px;
-            background: linear-gradient(145deg, #18181b, #3f3f46);
-            color: #fff;
-            font-size: 16px;
-            box-shadow: 0 6px 16px rgba(0,0,0,.18);
-        }
-        .document-brand strong,
-        .document-brand small {
-            display: block;
-        }
         .document-brand strong {
             font-size: 12px;
             letter-spacing: -.01em;
@@ -1731,6 +1707,42 @@
     }
 </style>
 
+<style id="quality-performance-system">
+        html, body { overscroll-behavior: none; }
+        header, .controls, .chat-panel, #presentation, #whiteboard, #shared-document {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        .tile { contain: strict; box-shadow: none !important; }
+        .tile:hover { transform: none !important; }
+        .tile video, .avatar { transition: none !important; }
+        .chat-messages, #document-editor, #whiteboard-canvas { contain: content; }
+        @media (max-width: 760px) {
+            header { grid-template-columns: 1fr auto; gap: 8px; padding-inline: 10px; }
+            .header-status { grid-column: 1 / -1; order: 3; }
+            .header-actions input { width: min(42vw, 150px); }
+            #grid {
+                inset: 104px 0 0;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: minmax(115px, 30vh);
+                gap: 6px;
+                padding: 6px 6px 94px;
+            }
+            #grid.compact, #grid.dense {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: minmax(100px, 26vh);
+                gap: 5px;
+            }
+            .tile { aspect-ratio: 4 / 3; }
+            .tile-tools { display: none; }
+            .name { left: 7px; bottom: 7px; padding: 5px 7px; font-size: 11px; }
+            .badge { top: 7px; right: 7px; padding: 4px 6px; font-size: 10px; }
+        }
+        @media (max-width: 430px) {
+            #grid { grid-auto-rows: minmax(96px, 23vh); }
+            .controls { gap: 5px !important; }
+        }
+    </style>
 </head>
 <body>
 <header>
@@ -1784,14 +1796,6 @@
 
 <section id="shared-document" hidden aria-label="Shared document">
     <div class="document-toolbar">
-        <div class="document-brand">
-            <span class="document-brand-icon">✦</span>
-            <span>
-                <strong>Shared document</strong>
-                <small>Collaborative notes</small>
-            </span>
-        </div>
-
         <div class="document-nav-scroll" role="toolbar" aria-label="Document editing tools">
             <div class="document-tool-group" aria-label="Text style">
                 <span class="document-group-label">Style</span>
@@ -1893,6 +1897,7 @@
 
 <div class="controls" hidden>
     <button id="mic">Mute</button>
+    <button id="noise-filter" type="button" title="Advanced noise cancellation">Noise filter: Auto</button>
     <button id="camera">Camera off</button>
     <button id="screen">Share screen</button>
     <button id="screen-preview" class="preview-button" type="button" hidden>Preview</button>
@@ -1924,6 +1929,7 @@ const joinButton = document.getElementById('join');
 const status = document.getElementById('status');
 const controls = document.querySelector('.controls');
 const micButton = document.getElementById('mic');
+const noiseFilterButton = document.getElementById('noise-filter');
 const cameraButton = document.getElementById('camera');
 const screenButton = document.getElementById('screen');
 const screenPreviewButton = document.getElementById('screen-preview');
@@ -1993,6 +1999,9 @@ let lastJoinAttempt = 0;
 let reconnecting = false;
 let presentationTrack = null;
 let pingTimer = null;
+let noiseFilterProcessor = null;
+let noiseFilterEnabled = false;
+let noiseFilterPending = false;
 const screenShareRetryTimers = new Set();
 
 const mediaElements = new Map();
@@ -2575,12 +2584,11 @@ function currentVideoPublication(participant) {
         ? [...participant.videoTrackPublications.values()]
         : [];
 
-    // Screen share is a presentation surface, so it wins over camera for
-    // remote participants. The sender's tile deliberately stays on camera
-    // (or the avatar) to avoid decoding its own outgoing screen share.
+    // Show the sender's own screen share too. The local LiveKit track is
+    // already available in this browser, so no second subscription is needed.
     const screenShare = currentScreenSharePublication(participant);
     if (participant === room?.localParticipant) {
-        return publications.find(publication =>
+        return screenShare || publications.find(publication =>
             publication.source === Track.Source.Camera &&
             activeVideoPublication(publication)
         ) || null;
@@ -3297,6 +3305,10 @@ async function fetchToken(name) {
             throw new Error('Laravel returned an invalid LiveKit token response.');
         }
 
+        if (location.protocol === 'https:' && /^ws:\/\//i.test(data.server_url)) {
+            throw new Error('LiveKit is configured with insecure ws:// on an HTTPS page. Use wss:// for mobile and production.');
+        }
+
         return data;
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -3313,16 +3325,75 @@ function isMobile() {
         /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+async function enableAdvancedNoiseCancellation() {
+    const publication = room?.localParticipant?.getTrackPublication(Track.Source.Microphone);
+    const track = publication?.track;
+    if (!track || noiseFilterPending || noiseFilterEnabled) return;
+
+    noiseFilterPending = true;
+    noiseFilterButton.disabled = true;
+    noiseFilterButton.textContent = 'Noise filter: Loading';
+
+    try {
+        const { KrispNoiseFilter, isKrispNoiseFilterSupported } = await import(
+            'https://cdn.jsdelivr.net/npm/@livekit/krisp-noise-filter@0.4.5/+esm'
+        );
+
+        if (typeof isKrispNoiseFilterSupported === 'function' && !isKrispNoiseFilterSupported()) {
+            noiseFilterButton.textContent = 'Noise filter: WebRTC';
+            return;
+        }
+
+        noiseFilterProcessor = KrispNoiseFilter();
+        await track.setProcessor(noiseFilterProcessor);
+        await noiseFilterProcessor.setEnabled(true);
+        noiseFilterEnabled = true;
+        noiseFilterButton.textContent = 'Noise filter: Krisp';
+    } catch (error) {
+        console.warn('Advanced noise filter unavailable:', error);
+        noiseFilterProcessor = null;
+        noiseFilterEnabled = false;
+        noiseFilterButton.textContent = 'Noise filter: WebRTC';
+    } finally {
+        noiseFilterPending = false;
+        noiseFilterButton.disabled = false;
+    }
+}
+
+async function toggleAdvancedNoiseCancellation() {
+    if (!room || leaving || room.state !== ConnectionState.Connected) return;
+
+    if (!noiseFilterProcessor) {
+        await enableAdvancedNoiseCancellation();
+        return;
+    }
+
+    noiseFilterPending = true;
+    noiseFilterButton.disabled = true;
+    try {
+        noiseFilterEnabled = !noiseFilterEnabled;
+        await noiseFilterProcessor.setEnabled(noiseFilterEnabled);
+        noiseFilterButton.textContent = noiseFilterEnabled
+            ? 'Noise filter: Krisp'
+            : 'Noise filter: WebRTC';
+    } catch (error) {
+        noiseFilterEnabled = false;
+        console.warn('Noise filter toggle failed:', error);
+        setStatus('Could not change the advanced noise filter.', 'error');
+    } finally {
+        noiseFilterPending = false;
+        noiseFilterButton.disabled = false;
+    }
+}
+
 function roomOptions() {
     const mobile = isMobile();
 
     return new Room({
-        // Keep screen-share delivery deterministic. Adaptive stream and dynacast
-        // can pause/reduce video based on element visibility; a meeting UI that
-        // swaps tracks dynamically should not let those optimizations hide a
-        // presentation track.
-        adaptiveStream: false,
-        dynacast: false,
+        // Adapt camera layers to device/network conditions. Screen-share
+        // subscriptions are explicitly kept alive by the event handlers below.
+        adaptiveStream: true,
+        dynacast: true,
         disconnectOnPageLeave: true,
         singlePeerConnection: true,
         audioCaptureDefaults: {
@@ -3443,6 +3514,11 @@ function setupRoomEvents() {
         })
         .on(RoomEvent.LocalTrackPublished, publication => {
             if (publication.track) attachTrack(publication.track, room.localParticipant, publication);
+            if (publication.source === Track.Source.Microphone) {
+                noiseFilterProcessor = null;
+                noiseFilterEnabled = false;
+                void enableAdvancedNoiseCancellation();
+            }
             renderParticipantVideo(room.localParticipant);
             updateButtons();
             updateShareButton();
@@ -3573,23 +3649,19 @@ function setupRoomEvents() {
         });
 }
 
-async function connectRoom(serverUrl, token, relayOnly = true) {
+async function connectRoom(serverUrl, token) {
     if (!room) throw new Error('LiveKit room is not initialized.');
 
-    const connectionOptions = {
+    await room.connect(serverUrl, token, {
         autoSubscribe: true,
-        maxRetries: 0,
-        websocketTimeout: 7000,
-        peerConnectionTimeout: relayOnly ? 8000 : 5000,
-    };
-
-    if (relayOnly) {
-        connectionOptions.rtcConfig = {
-            iceTransportPolicy: 'relay',
-        };
-    }
-
-    await room.connect(serverUrl, token, connectionOptions);
+        maxRetries: 2,
+        websocketTimeout: 10000,
+        peerConnectionTimeout: 10000,
+        rtcConfig: {
+            iceCandidatePoolSize: 1,
+            iceTransportPolicy: 'all',
+        },
+    });
 }
 
 async function runConnectionDiagnostics(serverUrl, token) {
@@ -3649,31 +3721,7 @@ async function join() {
         setStatus('Connecting to realtime media...');
         await room.prepareConnection(data.server_url, data.participant_token);
 
-        let connectionError = null;
-
-        // Direct ICE has timed out repeatedly in this deployment. Prefer TURN
-        // so restrictive/mobile networks do not wait through failed ICE checks.
-        try {
-            await connectRoom(data.server_url, data.participant_token, true);
-        } catch (error) {
-            connectionError = error;
-            console.warn('TURN connection failed; retrying direct WebRTC:', error);
-
-            const failedRoom = room;
-            room = null;
-            await failedRoom?.disconnect().catch(() => {});
-
-            room = roomOptions();
-            setupRoomEvents();
-
-            setStatus('Relay connection failed. Trying direct media...');
-            await room.prepareConnection(data.server_url, data.participant_token);
-            await connectRoom(data.server_url, data.participant_token, false);
-        }
-
-        if (connectionError) {
-            console.info('Direct WebRTC fallback succeeded after TURN failed.');
-        }
+        await connectRoom(data.server_url, data.participant_token);
 
         nameInput.disabled = true;
         joinButton.hidden = true;
@@ -3690,6 +3738,9 @@ async function join() {
             noiseSuppression: true,
             autoGainControl: true,
         });
+
+        // Join stays fast; enhanced filtering loads in the background.
+        void enableAdvancedNoiseCancellation();
 
         // Never enable the camera as part of joining. Users explicitly turn it
         // on with the Camera button after entering the meeting.
@@ -3858,6 +3909,16 @@ async function leave() {
     screenShareRetryTimers.forEach(timer => clearTimeout(timer));
     screenShareRetryTimers.clear();
 
+    if (noiseFilterProcessor) {
+        try {
+            await room?.localParticipant?.getTrackPublication(Track.Source.Microphone)?.track?.stopProcessor();
+        } catch (error) {
+            console.warn('Noise filter cleanup failed:', error);
+        }
+        noiseFilterProcessor = null;
+        noiseFilterEnabled = false;
+    }
+
     if (room) {
         const oldRoom = room;
         room = null;
@@ -3877,6 +3938,7 @@ chatToggle.addEventListener('click', () => setChatOpen(!chatOpen));
 chatClose.addEventListener('click', () => setChatOpen(false));
 chatForm.addEventListener('submit', sendChatMessage);
 micButton.addEventListener('click', toggleMicrophone);
+noiseFilterButton.addEventListener('click', toggleAdvancedNoiseCancellation);
 cameraButton.addEventListener('click', toggleCamera);
 screenButton.addEventListener('click', toggleScreenShare);
 screenPreviewButton.addEventListener('click', () => openLocalScreenPreview());
