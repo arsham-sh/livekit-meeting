@@ -159,3 +159,17 @@ Before accepting real users:
 - [ ] LiveKit is configured with a pinned version and an upgrade/rollback procedure.
 
 This repository does not contain a server-specific IP, domain, TLS certificate, or production secret. Those values belong on the deployment host, not in Git.
+
+
+## Mobile connectivity
+
+The browser client uses secure WebSockets in production and LiveKit's normal ICE order: direct UDP first, TCP fallback, then embedded TURN when configured. The production compose enables TURN/UDP on port 3478.
+
+For a production deployment, expose the LiveKit signaling endpoint over HTTPS/WSS and allow these LiveKit ports through the host/cloud firewall:
+
+- TCP 443 for the HTTPS/WSS endpoint
+- TCP 7881 for WebRTC fallback
+- UDP 3478 for embedded TURN
+- UDP 50000-60000 for direct WebRTC media
+
+If the meeting page is served over HTTPS, LIVEKIT_URL must resolve to wss://..., not ws://....
