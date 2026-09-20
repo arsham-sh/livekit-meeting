@@ -1784,6 +1784,16 @@
         .tile.screen-share { animation: tileReveal .42s cubic-bezier(.22,1,.36,1) both, sharePulse 2.8s ease-in-out .42s infinite; }
         .tile.speaking { animation: tileReveal .42s cubic-bezier(.22,1,.36,1) both, controlFloat 1.8s ease-in-out .42s infinite; }
         button:not(:disabled) { position: relative; overflow: hidden; }
+        .chat-toggle {
+            position: fixed !important;
+            right: 16px;
+            bottom: max(16px, env(safe-area-inset-bottom));
+        }
+        .chat-panel {
+            position: fixed !important;
+            right: 16px;
+            bottom: 78px;
+        }
         button:not(:disabled)::after {
             content: "";
             position: absolute;
@@ -1804,6 +1814,8 @@
         }
         .chat-message:hover { transform: translateX(2px); }
         .document-tool-group:hover { transform: translateY(-1px); }
+        .chat-toggle:not(:disabled) { position: fixed !important; }
+        .chat-panel { position: fixed !important; }
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: .01ms !important;
@@ -3677,15 +3689,20 @@ function setupRoomEvents() {
                 screenShareRetryTimers.forEach(timer => clearTimeout(timer));
                 screenShareRetryTimers.clear();
                 reconnecting = false;
-                setStatus('Disconnected from the meeting. Press Join to reconnect.', 'error');
+                setStatus('Connection lost. Rejoin the meeting to restore media.', 'error');
                 controls.hidden = true;
                 chatToggle.hidden = true;
                 setChatOpen(false);
                 joinButton.hidden = false;
                 joinButton.disabled = false;
                 nameInput.disabled = false;
+
+                const disconnectedRoom = room;
                 room = null;
+                disconnectedRoom?.disconnect().catch(() => {});
                 clearMedia();
+                openWhiteboard(false);
+                openSharedDocument(false);
             }
         })
         .on(RoomEvent.Reconnecting, () => {
@@ -3753,11 +3770,11 @@ async function connectRoom(serverUrl, token) {
 
     await room.connect(resolvedServerUrl, token, {
         autoSubscribe: true,
-        maxRetries: 2,
-        websocketTimeout: 10000,
-        peerConnectionTimeout: 10000,
+        maxRetries: 5,
+        websocketTimeout: 20000,
+        peerConnectionTimeout: 20000,
         rtcConfig: {
-            iceCandidatePoolSize: 1,
+            iceCandidatePoolSize: 2,
             iceTransportPolicy: 'all',
         },
     });
