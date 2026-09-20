@@ -49,6 +49,15 @@ class MeetingController extends Controller
         $livekitUrl = preg_replace('/^http:/i', 'ws:', $livekitUrl);
         $livekitUrl = preg_replace('/^https:/i', 'wss:', $livekitUrl);
 
+        if (!is_string($livekitUrl) || $livekitUrl === '') {
+            abort(503, 'LiveKit URL is invalid.');
+        }
+
+        // Never hand a production HTTPS page a loopback/insecure endpoint.
+        if (app()->environment('production') && preg_match('/^ws:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i', $livekitUrl)) {
+            abort(503, 'LiveKit is configured with a local ws:// address. Set LIVEKIT_URL to the public wss:// endpoint.');
+        }
+
         $identity = (string) Str::uuid();
 
         return response()->json([
