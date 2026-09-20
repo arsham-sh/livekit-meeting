@@ -44,10 +44,15 @@ class MeetingController extends Controller
             abort(503, 'Realtime service is not configured.');
         }
 
+        // Browsers block insecure WebSockets from an HTTPS meeting page. Normalize
+        // HTTP(S) config values to the transport URL expected by livekit-client.
+        $livekitUrl = preg_replace('/^http:/i', 'ws:', $livekitUrl);
+        $livekitUrl = preg_replace('/^https:/i', 'wss:', $livekitUrl);
+
         $identity = (string) Str::uuid();
 
         return response()->json([
-            'server_url' => config('livekit.url'),
+            'server_url' => $livekitUrl,
             'participant_token' => $liveKit->token($room, $identity, $data['name']),
         ]);
     }
