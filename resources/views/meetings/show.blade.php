@@ -3848,20 +3848,33 @@ async function join() {
         renderAllParticipants();
         electDocumentHost();
         updateDocumentPermissionUi();
-        setStatus('Connected. Starting microphone. Camera is off by default.', 'good');
+        setStatus('Connected. Starting media...', 'good');
 
-        await room.localParticipant.setMicrophoneEnabled(true, {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-        });
+        // A mobile browser can connect to LiveKit successfully and still reject
+        // a media request because of permission policy, autoplay, or device
+        // state. Do not treat a microphone/camera failure as a failed room join.
+        try {
+            await room.localParticipant.setMicrophoneEnabled(true, {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            });
 
-        // Join stays fast; enhanced filtering loads in the background.
-        void enableAdvancedNoiseCancellation();
+            // Join stays fast; enhanced filtering loads in the background.
+            void enableAdvancedNoiseCancellation();
+        } catch (error) {
+            console.warn('Microphone setup failed after room connection:', error);
+            audioUnlockNeeded = true;
+            setStatus('Connected. Microphone permission is unavailable. You can enable it from the browser settings.', 'error');
+        }
 
         // Never enable the camera as part of joining. Users explicitly turn it
         // on with the Camera button after entering the meeting.
-        await room.localParticipant.setCameraEnabled(false);
+        try {
+            await room.localParticipant.setCameraEnabled(false);
+        } catch (error) {
+            console.warn('Camera initialization failed after room connection:', error);
+        }
 
         updateButtons();
         updateShareButton();
@@ -3871,11 +3884,9 @@ async function join() {
         renderParticipantVideo(room.localParticipant);
 
         const mic = room.localParticipant.getTrackPublication(Track.Source.Microphone);
-        const camera = room.localParticipant.getTrackPublication(Track.Source.Camera);
-
         if (!mic) {
-            setStatus('Connected. Microphone is unavailable. Check browser permissions.', 'error');
-        } else {
+            setStatus('Connected. Microphone is unavailable. Use the Mute/Unmute control after granting permission.', 'error');
+        } else if (!audioUnlockNeeded) {
             setStatus('Connected as ' + name, 'good');
         }
     } catch (error) {
