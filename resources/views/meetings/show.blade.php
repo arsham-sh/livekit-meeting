@@ -1743,7 +1743,76 @@
             .controls { gap: 5px !important; }
         }
     </style>
-</head>
+<style id="mobile-motion-system">
+        /* Motion layer: restrained, GPU-friendly, and disabled for reduced-motion users. */
+        @keyframes pageReveal {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes tileReveal {
+            from { opacity: 0; transform: translateY(12px) scale(.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes softPulse {
+            0%, 100% { opacity: .72; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.08); }
+        }
+        @keyframes statusGlow {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(82,82,91,.12); }
+            50% { box-shadow: 0 0 0 6px rgba(74,222,128,.08); }
+        }
+        @keyframes sharePulse {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(239,68,68,.12), 0 18px 55px rgba(239,68,68,.10); }
+            50% { box-shadow: 0 0 0 1px rgba(239,68,68,.24), 0 18px 65px rgba(239,68,68,.16); }
+        }
+        @keyframes panelIn {
+            from { opacity: 0; transform: translateY(16px) scale(.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes controlFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+        body { animation: pageReveal .45s cubic-bezier(.22,1,.36,1) both; }
+        header { animation: pageReveal .5s .04s cubic-bezier(.22,1,.36,1) both; }
+        .status-dot { animation: statusGlow 2.4s ease-in-out infinite; }
+        .status-dot.good { animation-duration: 2s; }
+        .tile {
+            animation: tileReveal .42s cubic-bezier(.22,1,.36,1) both;
+            animation-delay: calc(var(--tile-index, 0) * 35ms);
+        }
+        .tile.screen-share { animation: tileReveal .42s cubic-bezier(.22,1,.36,1) both, sharePulse 2.8s ease-in-out .42s infinite; }
+        .tile.speaking { animation: tileReveal .42s cubic-bezier(.22,1,.36,1) both, controlFloat 1.8s ease-in-out .42s infinite; }
+        button:not(:disabled) { position: relative; overflow: hidden; }
+        button:not(:disabled)::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,.08) 48%, transparent 76%);
+            transform: translateX(-120%);
+            transition: transform .5s ease;
+            pointer-events: none;
+        }
+        button:not(:disabled):hover::after { transform: translateX(120%); }
+        .hud-pill { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+        .hud-pill:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.16); }
+        #chat-panel, #whiteboard, #shared-document, #presentation {
+            animation: panelIn .35s cubic-bezier(.22,1,.36,1) both;
+        }
+        .chat-message, .document-tool-group, .whiteboard-toolbar button {
+            transition: transform .18s ease, opacity .18s ease, background-color .18s ease;
+        }
+        .chat-message:hover { transform: translateX(2px); }
+        .document-tool-group:hover { transform: translateY(-1px); }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+</style>\n</head>
 <body>
 <header>
     <div class="room"><span class="room-kicker">LIVE ROOM</span><span class="room-name">{{ $room }}</span></div>
@@ -3649,10 +3718,40 @@ function setupRoomEvents() {
         });
 }
 
+
+function resolveLiveKitServerUrl(serverUrl) {
+    if (typeof serverUrl !== 'string' || serverUrl.trim() === '') {
+        throw new Error('LiveKit server URL is missing.');
+    }
+
+    const parsed = new URL(serverUrl, location.href);
+    const loopbackHosts = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1']);
+
+    // A phone cannot reach the developer machine through its own localhost.
+    // When the app is opened over plain HTTP on a LAN, safely replace a loopback
+    // LiveKit host with the same hostname the phone used to open Laravel.
+    if (loopbackHosts.has(parsed.hostname) && !['localhost', '127.0.0.1', '::1'].includes(location.hostname)) {
+        if (location.protocol === 'https:') {
+            throw new Error('LiveKit is configured with a local ws:// address. Production/mobile HTTPS requires a public wss:// LiveKit URL.');
+        }
+
+        parsed.hostname = location.hostname;
+        parsed.protocol = 'ws:';
+    }
+
+    if (location.protocol === 'https:' && parsed.protocol !== 'wss:') {
+        throw new Error('This meeting is HTTPS, but LiveKit is not using wss://. Configure LIVEKIT_URL as a secure WSS endpoint.');
+    }
+
+    return parsed.toString().replace(/\/$/, '');
+}
+
 async function connectRoom(serverUrl, token) {
     if (!room) throw new Error('LiveKit room is not initialized.');
 
-    await room.connect(serverUrl, token, {
+    const resolvedServerUrl = resolveLiveKitServerUrl(serverUrl);
+
+    await room.connect(resolvedServerUrl, token, {
         autoSubscribe: true,
         maxRetries: 2,
         websocketTimeout: 10000,
@@ -3716,12 +3815,13 @@ async function join() {
         // Fetch the token first, then pre-warm the exact LiveKit Cloud edge.
         // The old flow pre-warmed without a token and then repeated the work.
         const data = await fetchToken(name);
-        connectionData = data;
+        const resolvedServerUrl = resolveLiveKitServerUrl(data.server_url);
+        connectionData = { ...data, server_url: resolvedServerUrl };
 
         setStatus('Connecting to realtime media...');
-        await room.prepareConnection(data.server_url, data.participant_token);
+        await room.prepareConnection(resolvedServerUrl, data.participant_token);
 
-        await connectRoom(data.server_url, data.participant_token);
+        await connectRoom(resolvedServerUrl, data.participant_token);
 
         nameInput.disabled = true;
         joinButton.hidden = true;
