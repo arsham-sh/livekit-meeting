@@ -306,6 +306,51 @@
             }
         }
     </style>
+<style id="landing-motion-system">
+        @keyframes landingRise {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes accentDrift {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(2deg); }
+        }
+        @keyframes lineSweep {
+            from { transform: scaleX(0); transform-origin: left; }
+            to { transform: scaleX(1); transform-origin: left; }
+        }
+        .shell { animation: landingRise .65s cubic-bezier(.22,1,.36,1) both; }
+        .eyebrow { animation: landingRise .5s .08s cubic-bezier(.22,1,.36,1) both; }
+        h1 { animation: landingRise .7s .14s cubic-bezier(.22,1,.36,1) both; }
+        .hero-copy { animation: landingRise .6s .22s cubic-bezier(.22,1,.36,1) both; }
+        .feature-row { position: relative; animation: landingRise .6s .3s cubic-bezier(.22,1,.36,1) both; }
+        .feature-row::before {
+            content: "";
+            position: absolute;
+            inset: -1px 0 auto;
+            height: 1px;
+            background: var(--ink);
+            animation: lineSweep .7s .35s cubic-bezier(.22,1,.36,1) both;
+        }
+        .feature {
+            transition: transform .25s ease, background-color .25s ease, padding-left .25s ease;
+        }
+        .feature:hover { transform: translateY(-3px); padding-left: 6px; background: rgba(255,255,255,.12); }
+        .feature strong { transition: color .2s ease; }
+        .feature:hover strong { color: var(--accent); }
+        .start-card { animation: landingRise .65s .18s cubic-bezier(.22,1,.36,1) both; }
+        .start-card .icon { animation: accentDrift 3s ease-in-out 1s infinite; }
+        button { transition: background .2s ease, color .2s ease, transform .2s ease, letter-spacing .2s ease; }
+        button:hover { letter-spacing: .12em; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+            }
+        }
+</style>
 </head>
 <body>
     <main class="shell">
